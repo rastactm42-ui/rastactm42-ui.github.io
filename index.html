@@ -15,13 +15,18 @@ body{
   margin:60px auto;
   background:rgba(0,0,0,0.85);
   padding:20px;
-  border-radius:15px;
+  border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
+  animation: pop 0.6s ease-out;
+}
+@keyframes pop{
+  from{ transform:scale(0.9); opacity:0 }
+  to{ transform:scale(1); opacity:1 }
 }
 h2{
   text-align:center;
   color:#ff00ff;
-  text-shadow:0 0 10px #ff00ff;
+  text-shadow:0 0 12px #ff00ff;
 }
 input, select, button{
   width:100%;
@@ -31,41 +36,45 @@ input, select, button{
   border-radius:8px;
 }
 input, select{
-  background:#111;
-  color:#fff;
-  border:1px solid #333;
+  background:#111; color:#fff; border:1px solid #333;
 }
 button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
+  color:#fff; font-weight:bold; cursor:pointer;
+  box-shadow:0 0 12px #ff00ff;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse{
+  0%{ box-shadow:0 0 8px #ff00ff }
+  50%{ box-shadow:0 0 18px #ff66ff }
+  100%{ box-shadow:0 0 8px #ff00ff }
 }
 #chat{ display:none; }
 #mensajes{
-  height:220px;
-  overflow-y:auto;
-  border:1px solid #333;
-  padding:10px;
-  background:#000;
-  margin-bottom:8px;
+  height:220px; overflow-y:auto;
+  border:1px solid #333; padding:10px;
+  background:#000; margin-bottom:8px;
 }
-.mensaje{ margin-bottom:6px; }
-.hombre{ color:#4da6ff; }
-.chica{ color:#ff66cc; }
-.regalo{
-  color:#ffd700;
-  font-weight:bold;
-}
-.panel{
-  font-size:14px;
+.mensaje{
   margin-bottom:6px;
+  animation: slide 0.3s ease-out;
 }
-footer{
-  text-align:center;
-  font-size:12px;
-  color:#777;
+@keyframes slide{
+  from{ transform:translateX(-10px); opacity:0 }
+  to{ transform:translateX(0); opacity:1 }
 }
+.hombre{ color:#4da6ff }
+.chica{ color:#ff66cc }
+.regalo{
+  color:#ffd700; font-weight:bold;
+  animation: glow 1s infinite alternate;
+}
+@keyframes glow{
+  from{ text-shadow:0 0 5px #ffd700 }
+  to{ text-shadow:0 0 15px #fff2a8 }
+}
+.panel{ font-size:14px; margin-bottom:6px }
+footer{ text-align:center; font-size:12px; color:#777 }
 </style>
 </head>
 <body>
@@ -85,42 +94,32 @@ footer{
 
   <div class="panel">
     💰 Monedas: <span id="monedas">100</span>
-    <span id="ganancia"></span>
   </div>
 
   <div id="mensajes"></div>
 
   <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
+  <button onclick="enviarRegalo()">🎁 Enviar regalo (10)</button>
 
-  <button onclick="enviarRegalo()">🎁 Enviar regalo (10 monedas)</button>
-
-  <footer>Regalos simulados · Demo</footer>
+  <footer>Demo · Efectos activados</footer>
 </div>
 
 <script>
-let user="";
-let tipo="";
-let monedas=100;
-let ganancia=0;
+let user="", tipo="", monedas=100;
 
 function entrar(){
   user=document.getElementById("usuario").value;
   tipo=document.getElementById("tipo").value;
   if(!user) return alert("Ingresa correo o número");
-
-  if(tipo==="chica"){
-    document.getElementById("ganancia").innerText=" | Ganancia: S/ "+ganancia;
-  }
-
   document.getElementById("login").style.display="none";
   document.getElementById("chat").style.display="block";
 }
 
 function enviar(){
-  let txt=document.getElementById("texto").value;
+  const txt=document.getElementById("texto").value;
   if(!txt) return;
-  let div=document.createElement("div");
+  const div=document.createElement("div");
   div.className="mensaje "+tipo;
   div.textContent=user+" ("+tipo+"): "+txt;
   document.getElementById("mensajes").appendChild(div);
@@ -128,24 +127,11 @@ function enviar(){
 }
 
 function enviarRegalo(){
-  if(tipo!=="hombre"){
-    alert("Solo los hombres envían regalos");
-    return;
-  }
-  if(monedas<10){
-    alert("No tienes monedas");
-    return;
-  }
+  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
+  if(monedas<10) return alert("No tienes monedas");
   monedas-=10;
   document.getElementById("monedas").innerText=monedas;
+  const div=document.createElement("div");
+  div.className="mensaje regalo"
 
-  let div=document.createElement("div");
-  div.className="mensaje regalo";
-  div.textContent="🎁 "+user+" envió un regalo";
-  document.getElementById("mensajes").appendChild(div);
-}
-</script>
-
-</body>
-</html>
 
