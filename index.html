@@ -71,3 +71,81 @@ footer{
 <body>
 
 <div class="container" id="login">
+  <h2>🔥 CHAT NOCTURNO 🔥</h2>
+  <input id="usuario" placeholder="Correo o número">
+  <select id="tipo">
+    <option value="hombre">👨 Hombre</option>
+    <option value="chica">👩 Chica</option>
+  </select>
+  <button onclick="entrar()">ENTRAR</button>
+</div>
+
+<div class="container" id="chat">
+  <h2>💬 CHAT EN VIVO</h2>
+
+  <div class="panel">
+    💰 Monedas: <span id="monedas">100</span>
+    <span id="ganancia"></span>
+  </div>
+
+  <div id="mensajes"></div>
+
+  <input id="texto" placeholder="Escribe un mensaje">
+  <button onclick="enviar()">ENVIAR</button>
+
+  <button onclick="enviarRegalo()">🎁 Enviar regalo (10 monedas)</button>
+
+  <footer>Regalos simulados · Demo</footer>
+</div>
+
+<script>
+let user="";
+let tipo="";
+let monedas=100;
+let ganancia=0;
+
+function entrar(){
+  user=document.getElementById("usuario").value;
+  tipo=document.getElementById("tipo").value;
+  if(!user) return alert("Ingresa correo o número");
+
+  if(tipo==="chica"){
+    document.getElementById("ganancia").innerText=" | Ganancia: S/ "+ganancia;
+  }
+
+  document.getElementById("login").style.display="none";
+  document.getElementById("chat").style.display="block";
+}
+
+function enviar(){
+  let txt=document.getElementById("texto").value;
+  if(!txt) return;
+  let div=document.createElement("div");
+  div.className="mensaje "+tipo;
+  div.textContent=user+" ("+tipo+"): "+txt;
+  document.getElementById("mensajes").appendChild(div);
+  document.getElementById("texto").value="";
+}
+
+function enviarRegalo(){
+  if(tipo!=="hombre"){
+    alert("Solo los hombres envían regalos");
+    return;
+  }
+  if(monedas<10){
+    alert("No tienes monedas");
+    return;
+  }
+  monedas-=10;
+  document.getElementById("monedas").innerText=monedas;
+
+  let div=document.createElement("div");
+  div.className="mensaje regalo";
+  div.textContent="🎁 "+user+" envió un regalo";
+  document.getElementById("mensajes").appendChild(div);
+}
+</script>
+
+</body>
+</html>
+
