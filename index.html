@@ -11,9 +11,9 @@ body{
   color:#fff;
 }
 .container{
-  max-width:380px;
-  margin:80px auto;
-  background:rgba(0,0,0,0.8);
+  max-width:400px;
+  margin:60px auto;
+  background:rgba(0,0,0,0.85);
   padding:20px;
   border-radius:15px;
   box-shadow:0 0 25px #ff00ff;
@@ -26,10 +26,9 @@ h2{
 input, select, button{
   width:100%;
   padding:12px;
-  margin:8px 0;
+  margin:6px 0;
   border:none;
   border-radius:8px;
-  font-size:15px;
 }
 input, select{
   background:#111;
@@ -41,77 +40,34 @@ button{
   color:#fff;
   font-weight:bold;
   cursor:pointer;
-  box-shadow:0 0 10px #ff00ff;
 }
 #chat{ display:none; }
 #mensajes{
-  height:260px;
+  height:220px;
   overflow-y:auto;
   border:1px solid #333;
   padding:10px;
-  margin-bottom:10px;
   background:#000;
+  margin-bottom:8px;
 }
-.mensaje{
+.mensaje{ margin-bottom:6px; }
+.hombre{ color:#4da6ff; }
+.chica{ color:#ff66cc; }
+.regalo{
+  color:#ffd700;
+  font-weight:bold;
+}
+.panel{
+  font-size:14px;
   margin-bottom:6px;
-  padding:6px;
-  border-bottom:1px solid #222;
-}
-.hombre{
-  color:#4da6ff;
-}
-.chica{
-  color:#ff66cc;
 }
 footer{
   text-align:center;
   font-size:12px;
   color:#777;
-  margin-top:10px;
 }
 </style>
 </head>
 <body>
 
 <div class="container" id="login">
-  <h2>🔥 CHAT NOCTURNO 🔥</h2>
-  <input id="usuario" placeholder="Correo o número">
-  <select id="tipo">
-    <option value="hombre">👨 Hombre</option>
-    <option value="chica">👩 Chica</option>
-  </select>
-  <button onclick="entrar()">ENTRAR</button>
-</div>
-
-<div class="container" id="chat">
-  <h2>💬 CHAT EN VIVO</h2>
-  <div id="mensajes"></div>
-  <input id="texto" placeholder="Escribe tu mensaje">
-  <button onclick="enviar()">ENVIAR</button>
-  <footer>Solo entretenimiento +18</footer>
-</div>
-
-<script>
-let user="";
-let tipo="";
-
-function entrar(){
-  user=document.getElementById("usuario").value;
-  tipo=document.getElementById("tipo").value;
-  if(!user) return alert("Ingresa correo o número");
-  document.getElementById("login").style.display="none";
-  document.getElementById("chat").style.display="block";
-}
-
-function enviar(){
-  let txt=document.getElementById("texto").value;
-  if(!txt) return;
-  let div=document.createElement("div");
-  div.className="mensaje "+tipo;
-  div.textContent=user+" ("+tipo+"): "+txt;
-  document.getElementById("mensajes").appendChild(div);
-  document.getElementById("texto").value="";
-}
-</script>
-
-</b
