@@ -4,44 +4,102 @@
 <meta charset="UTF-8">
 <title>Chat</title>
 <style>
-body { background:#111; color:#fff; font-family:Arial; }
-.container { max-width:400px; margin:50px auto; }
-input, button { width:100%; padding:10px; margin:5px 0; }
-#chat { display:none; }
-#mensajes { height:300px; overflow:auto; border:1px solid #444; padding:10px; }
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:linear-gradient(135deg,#000,#1a0033,#000);
+  color:#fff;
+}
+.container{
+  max-width:380px;
+  margin:80px auto;
+  background:rgba(0,0,0,0.75);
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 0 25px #ff00ff;
+}
+h2{
+  text-align:center;
+  color:#ff00ff;
+  text-shadow:0 0 10px #ff00ff;
+}
+input, button{
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border:none;
+  border-radius:8px;
+  font-size:15px;
+}
+input{
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+}
+button{
+  background:linear-gradient(90deg,#ff00ff,#ff0066);
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 0 10px #ff00ff;
+}
+button:hover{
+  opacity:0.85;
+}
+#chat{ display:none; }
+#mensajes{
+  height:260px;
+  overflow-y:auto;
+  border:1px solid #333;
+  padding:10px;
+  margin-bottom:10px;
+  background:#000;
+}
+.mensaje{
+  margin-bottom:6px;
+  padding:6px;
+  border-bottom:1px solid #222;
+}
+footer{
+  text-align:center;
+  font-size:12px;
+  color:#777;
+  margin-top:10px;
+}
 </style>
 </head>
 <body>
 
 <div class="container" id="login">
-  <h2>Registro</h2>
+  <h2>🔥 CHAT NOCTURNO 🔥</h2>
   <input id="usuario" placeholder="Correo o número">
-  <button onclick="entrar()">Entrar</button>
+  <button onclick="entrar()">ENTRAR</button>
 </div>
 
 <div class="container" id="chat">
-  <h2>Chat</h2>
+  <h2>💬 CHAT EN VIVO</h2>
   <div id="mensajes"></div>
-  <input id="texto" placeholder="Mensaje">
-  <button onclick="enviar()">Enviar</button>
+  <input id="texto" placeholder="Escribe tu mensaje">
+  <button onclick="enviar()">ENVIAR</button>
+  <footer>Solo entretenimiento +18</footer>
 </div>
 
 <script>
-let user = "";
+let user="";
 
 function entrar(){
-  user = document.getElementById("usuario").value;
+  user=document.getElementById("usuario").value;
   if(!user) return alert("Ingresa correo o número");
-  localStorage.setItem("user", user);
   document.getElementById("login").style.display="none";
   document.getElementById("chat").style.display="block";
 }
 
 function enviar(){
-  let txt = document.getElementById("texto").value;
+  let txt=document.getElementById("texto").value;
   if(!txt) return;
-  let div = document.createElement("div");
-  div.textContent = user + ": " + txt;
+  let div=document.createElement("div");
+  div.className="mensaje";
+  div.textContent=user+": "+txt;
   document.getElementById("mensajes").appendChild(div);
   document.getElementById("texto").value="";
 }
