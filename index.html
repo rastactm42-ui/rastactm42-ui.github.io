@@ -3,9 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <title>Chat</title>
+  <style>
+    body { font-family: Arial; background:#111; color:#fff; }
+    #login, #chat { max-width:400px; margin:50px auto; }
+    input, button, select {
+      width:100%; padding:10px; margin:5px 0;
+    }
+    #mensajes {
+      height:300px; overflow-y:auto;
+      border:1px solid #444; padding:10px;
+      margin-bottom:10px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Chat</h1>
-  <p>Bienvenido a Chat</p>
+
+<div id="login">
+  <h2>Entrar al Chat</h2>
+  <input id="nombre" placeholder="Tu nombre">
+  <select id="tipo">
+    <option value="hombre">Hombre</option>
+    <option value="chica">Chica</option>
+  </select>
+  <button onclick="entrar()">Entrar</button>
+</div>
+
+<div id="chat" style="display:none">
+  <h2>Chat</h2>
+  <div id="mensajes"></div>
+  <input id="texto" placeholder="Escribe un mensaje">
+  <button onclick="enviar()">Enviar</button>
+</div>
+
+<script>
+let usuario = "";
+
+function entrar() {
+  const nombre = document.getElementById("nombre").value;
+  if (!nombre) return alert("Escribe tu nombre");
+  usuario = nombre;
+  document.getElementById("login").style.display="none";
+  document.getElementById("chat").style.display="block";
+}
+
+function enviar() {
+  const texto = document.getElementById("texto").value;
+  if (!texto) return;
+  const div = document.createElement("div");
+  div.textContent = usuario + ": " + texto;
+  document.getElementById("mensajes").appendChild(div);
+  document.getElementById("texto").value="";
+}
+</script>
+
 </body>
 </html>
