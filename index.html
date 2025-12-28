@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>Match App</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -10,152 +10,149 @@
 body{
   margin:0;
   font-family:Arial, sans-serif;
-  background:#000;
+  background:#111;
+  color:#fff;
 }
-.app{
+#login,#perfil{
+  display:flex;
+  justify-content:center;
+  align-items:center;
   height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-header{
-  height:60px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#fff;
-  font-size:22px;
-  font-weight:bold;
-  color:#ff4458;
-}
-.card-container{
-  flex:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#f5f5f5;
 }
 .card{
-  width:90%;
-  max-width:380px;
-  height:75%;
-  background:#fff;
-  border-radius:20px;
-  overflow:hidden;
-  box-shadow:0 10px 25px rgba(0,0,0,.3);
-  display:flex;
-  flex-direction:column;
-}
-.card img{
   width:100%;
-  height:70%;
-  object-fit:cover;
+  max-width:400px;
+  background:#000;
+  padding:20px;
+  border-radius:16px;
+  text-align:center;
 }
-.card-info{
-  padding:15px;
-}
-.card-info h2{
-  margin:0;
-}
-.card-info p{
-  margin:5px 0;
-  color:#555;
-}
-.actions{
-  height:90px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:40px;
-  background:#fff;
-}
-.actions button{
-  width:65px;
-  height:65px;
-  border-radius:50%;
+button,input,select{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
   border:none;
-  font-size:28px;
-  cursor:pointer;
+  border-radius:8px;
 }
-.nope{
-  background:#fff;
-  border:2px solid #ff4458;
-  color:#ff4458;
+button{
+  background:#ff0055;
+  color:#fff;
+  font-weight:bold;
 }
-.like{
-  background:#fff;
-  border:2px solid #2ecc71;
-  color:#2ecc71;
+input,select{
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+}
+img{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  margin:10px auto;
 }
 </style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc 
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  storageBucket: "chat-1adf8.appspot.com",
+  messagingSenderId: "466107819820",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+window.loginGoogle = async ()=>{
+  await signInWithPopup(auth,provider);
+};
+
+onAuthStateChanged(auth, async user=>{
+  if(!user) return;
+  
+  document.getElementById("login").style.display="none";
+  document.getElementById("perfil").style.display="flex";
+
+  const ref = doc(db,"users",user.uid);
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    await setDoc(ref,{
+      uid:user.uid,
+      nombre:user.displayName,
+      foto:user.photoURL,
+      email:user.email,
+      edad:"",
+      ciudad:"",
+      genero:"",
+      creado:Date.now()
+    });
+  }
+
+  document.getElementById("foto").src = user.photoURL;
+  document.getElementById("nombre").innerText = user.displayName;
+});
+
+window.guardarPerfil = async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+
+  await setDoc(doc(db,"users",user.uid),{
+    edad:document.getElementById("edad").value,
+    ciudad:document.getElementById("ciudad").value,
+    genero:document.getElementById("genero").value
+  },{merge:true});
+
+  alert("Perfil guardado ✔");
+};
+</script>
 </head>
 
 <body>
 
-<div class="app">
-
-<header>Chat</header>
-
-<div class="card-container">
+<div id="login">
   <div class="card">
-    <img id="foto" src="">
-    <div class="card-info">
-      <h2 id="nombre"></h2>
-      <p id="ciudad"></p>
-    </div>
+    <h2>Match App</h2>
+    <button onclick="loginGoogle()">Entrar con Google</button>
   </div>
 </div>
 
-<div class="actions">
-  <button class="nope" onclick="nope()">❌</button>
-  <button class="like" onclick="like()">❤️</button>
+<div id="perfil" style="display:none">
+  <div class="card">
+    <img id="foto">
+    <h3 id="nombre"></h3>
+
+    <input id="edad" placeholder="Edad">
+    <input id="ciudad" placeholder="Ciudad">
+
+    <select id="genero">
+      <option value="">Género</option>
+      <option value="mujer">Mujer</option>
+      <option value="hombre">Hombre</option>
+    </select>
+
+    <button onclick="guardarPerfil()">Guardar perfil</button>
+  </div>
 </div>
-
-</div>
-
-<script>
-const perfiles = [
-  {
-    nombre:"Ana, 23",
-    ciudad:"Lima",
-    foto:"https://images.unsplash.com/photo-1503342217505-b0a15ec3261c"
-  },
-  {
-    nombre:"Lucía, 26",
-    ciudad:"Arequipa",
-    foto:"https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-  },
-  {
-    nombre:"María, 24",
-    ciudad:"Cusco",
-    foto:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e"
-  }
-];
-
-let index=0;
-
-function mostrarPerfil(){
-  if(index>=perfiles.length){
-    alert("No hay más perfiles");
-    return;
-  }
-  const p=perfiles[index];
-  foto.src=p.foto;
-  nombre.innerText=p.nombre;
-  ciudad.innerText=p.ciudad;
-}
-
-function like(){
-  index++;
-  mostrarPerfil();
-}
-
-function nope(){
-  index++;
-  mostrarPerfil();
-}
-
-mostrarPerfil();
-</script>
 
 </body>
 </html>
