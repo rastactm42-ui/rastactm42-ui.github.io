@@ -39,14 +39,6 @@ input,select{
   border:1px solid #333;
 }
 #app,#perfil{display:none}
-.box{
-  background:#000;
-  padding:8px;
-  border-radius:8px;
-  height:120px;
-  overflow:auto;
-  font-size:13px;
-}
 #mensajes{
   height:180px;
   background:#000;
@@ -107,100 +99,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth();
-const db=firebase.firestore();
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-let confirmation=null;
-let usuario=null;
-
-/* 🔵 GOOGLE (REDIRECT, NO POPUP) */
-function loginGoogle(){
-  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
-}
-
-/* 📱 TELÉFONO */
-window.onload=()=>{
-  window.recaptcha=new firebase.auth.RecaptchaVerifier(
-    'recaptcha',
-    {size:'normal'}
-  );
-}
-
-function loginTelefono(){
-  auth.signInWithPhoneNumber(
-    document.getElementById("telefono").value,
-    window.recaptcha
-  ).then(r=>{
-    confirmation=r;
-    alert("Código enviado por SMS");
-  }).catch(e=>alert(e.message));
-}
-
-function verificarCodigo(){
-  if(!confirmation) return alert("Primero envía el SMS");
-  confirmation.confirm(document.getElementById("codigo").value);
-}
-
-/* SESIÓN */
-auth.onAuthStateChanged(u=>{
-  if(!u) return;
-  usuario=u;
-  db.collection("usuarios").doc(u.uid).get().then(d=>{
-    if(!d.exists){
-      login.style.display="none";
-      perfil.style.display="block";
-    }else{
-      iniciarApp(d.data());
-    }
-  });
-});
-
-/* PERFIL */
-function guardarPerfil(){
-  if(!nick.value || !tipo.value) return alert("Completa todo");
-  db.collection("usuarios").doc(usuario.uid).set({
-    nick:nick.value,
-    tipo:tipo.value
-  }).then(()=>{
-    iniciarApp({nick:nick.value,tipo:tipo.value});
-  });
-}
-
-function iniciarApp(d){
-  login.style.display="none";
-  perfil.style.display="none";
-  app.style.display="block";
-  info.innerText=d.nick+" ("+d.tipo+")";
-}
-
-/* CHAT */
-function enviar(){
-  if(!texto.value) return;
-  db.collection("mensajes").add({
-    nick:info.innerText,
-    texto:texto.value,
-    time:Date.now()
-  });
-  texto.value="";
-}
-
-db.collection("mensajes").orderBy("time")
-.onSnapshot(s=>{
-  mensajes.innerHTML="";
-  s.forEach(doc=>{
-    let d=document.createElement("div");
-    d.className="msg";
-    d.innerText=doc.data().nick+": "+doc.data().texto;
-    mensajes.appendChild(d);
-  });
-});
-
-/* SALIR */
-function salir(){
-  auth.signOut();
-  location.reload();
-}
-</script>
-
-</body>
-</html>
+let confi
