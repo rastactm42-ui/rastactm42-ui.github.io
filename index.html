@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Citas Chat</title>
+<title>CHAT</title>
 
 <style>
 body{
@@ -40,7 +40,7 @@ button{
   cursor:pointer;
 }
 
-#app,#chat{display:none}
+#app,#chat,#perfil{display:none}
 
 .perfil{
   padding:10px;
@@ -66,22 +66,26 @@ button{
 
 <!-- LOGIN -->
 <div class="container" id="login">
-  <h2>💖 Citas</h2>
-  <input id="email" placeholder="Correo">
-  <input id="password" type="password" placeholder="Contraseña">
-  <input id="nick" placeholder="Nick">
+  <h2>💬 CHAT</h2>
+  <button onclick="loginGoogle()">🔵 Entrar con Google</button>
+  <button onclick="loginFacebook()">🔷 Entrar con Facebook</button>
+</div>
+
+<!-- PERFIL -->
+<div class="container" id="perfil">
+  <h2>Tu perfil</h2>
+  <input id="nick" placeholder="Elige tu nick">
   <select id="tipo">
     <option value="">Selecciona</option>
     <option value="hombre">👨 Hombre</option>
     <option value="mujer">👩 Mujer</option>
   </select>
-  <button onclick="registrar()">REGISTRARSE</button>
-  <button onclick="entrar()">ENTRAR</button>
+  <button onclick="guardarPerfil()">GUARDAR</button>
 </div>
 
 <!-- APP -->
 <div class="container" id="app">
-  <h2>Personas</h2>
+  <h2>Usuarios en CHAT</h2>
   <div id="perfiles"></div>
   <button onclick="salir()">SALIR</button>
 </div>
@@ -110,12 +114,8 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-const email=document.getElementById("email");
-const password=document.getElementById("password");
-const nickEl=document.getElementById("nick");
-const tipoEl=document.getElementById("tipo");
-
 const login=document.getElementById("login");
+const perfil=document.getElementById("perfil");
 const app=document.getElementById("app");
 const chat=document.getElementById("chat");
 
@@ -124,45 +124,59 @@ const mensajes=document.getElementById("mensajes");
 const texto=document.getElementById("texto");
 const chatCon=document.getElementById("chatCon");
 
+const nickEl=document.getElementById("nick");
+const tipoEl=document.getElementById("tipo");
+
 let yo=null;
 let miNick="";
 let chatId="";
-let conNick="";
 
-/* REGISTRO */
-function registrar(){
-  if(!email.value||!password.value||!nickEl.value||!tipoEl.value)
-    return alert("Completa todo");
-  auth.createUserWithEmailAndPassword(email.value,password.value)
-  .then(c=>{
-    return db.collection("usuarios").doc(c.user.uid).set({
-      nick:nickEl.value,
-      tipo:tipoEl.value
-    });
-  })
-  .then(()=>alert("Cuenta creada, entra"));
+/* GOOGLE */
+function loginGoogle(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
 }
 
-/* ENTRAR */
-function entrar(){
-  auth.signInWithEmailAndPassword(email.value,password.value);
+/* FACEBOOK */
+function loginFacebook(){
+  const provider=new firebase.auth.FacebookAuthProvider();
+  auth.signInWithPopup(provider);
 }
 
-/* SESION */
+/* SESIÓN */
 auth.onAuthStateChanged(u=>{
   if(!u)return;
   yo=u;
   login.style.display="none";
-  app.style.display="block";
 
-  db.collection("usuarios").doc(u.uid).get().then(d=>{
-    miNick=d.data().nick;
+  db.collection("usuarios").doc(u.uid).get().then(doc=>{
+    if(!doc.exists){
+      perfil.style.display="block";
+    }else{
+      miNick=doc.data().nick;
+      app.style.display="block";
+      cargarPerfiles();
+    }
   });
-
-  cargarPerfiles();
 });
 
-/* LISTA DE PERFILES */
+/* GUARDAR PERFIL */
+function guardarPerfil(){
+  if(!nickEl.value||!tipoEl.value)
+    return alert("Completa tu perfil");
+
+  db.collection("usuarios").doc(yo.uid).set({
+    nick:nickEl.value,
+    tipo:tipoEl.value
+  }).then(()=>{
+    miNick=nickEl.value;
+    perfil.style.display="none";
+    app.style.display="block";
+    cargarPerfiles();
+  });
+}
+
+/* LISTA DE USUARIOS */
 function cargarPerfiles(){
   db.collection("usuarios").onSnapshot(s=>{
     perfiles.innerHTML="";
@@ -179,8 +193,49 @@ function cargarPerfiles(){
 
 /* CHAT */
 function abrirChat(uid,nick){
-  conNick=nick;
   chatId=[yo.uid,uid].sort().join("_");
   chatCon.innerText="Chat con "+nick;
   app.style.display="none";
-  chat.style.disp
+  chat.style.display="block";
+
+  db.collection("chats").doc(chatId)
+  .collection("mensajes")
+  .orderBy("time")
+  .onSnapshot(s=>{
+    mensajes.innerHTML="";
+    s.forEach(m=>{
+      const d=m.data();
+      const div=document.createElement("div");
+      div.className="msg "+(d.user===miNick?"yo":"otro");
+      div.textContent=d.user+": "+d.texto;
+      mensajes.appendChild(div);
+    });
+  });
+}
+
+function enviar(){
+  if(!texto.value)return;
+  db.collection("chats").doc(chatId)
+  .collection("mensajes")
+  .add({
+    user:miNick,
+    texto:texto.value,
+    time:Date.now()
+  });
+  texto.value="";
+}
+
+function volver(){
+  chat.style.display="none";
+  app.style.display="block";
+}
+
+function salir(){
+  auth.signOut();
+  location.reload();
+}
+</script>
+
+</body>
+</html>
+
