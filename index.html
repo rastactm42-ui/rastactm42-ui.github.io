@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Match</title>
+<title>Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,31 +13,41 @@ body{
   background:#000;
   color:#fff;
 }
-button{
-  padding:14px;
-  border:none;
-  border-radius:30px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
+
+/* VISTAS */
+.view{
+  display:none;
+  height:100vh;
+  padding-bottom:70px;
 }
-#login,#swipe,#chat{
+.active{display:block}
+
+/* LOGIN */
+#login{
   height:100vh;
   display:flex;
-  justify-content:center;
   align-items:center;
+  justify-content:center;
 }
+
+/* PERFIL / CARDS */
 .card{
-  width:100%;
-  max-width:420px;
   text-align:center;
 }
-#perfil{
-  position:relative;
-  width:100%;
-  height:100vh;
+#fotoPerfil{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  margin-bottom:10px;
 }
-#foto{
+
+/* SWIPE */
+#perfilSwipe{
+  position:relative;
+  height:100%;
+}
+#fotoSwipe{
   width:100%;
   height:100%;
   object-fit:cover;
@@ -50,33 +60,54 @@ button{
 }
 .acciones{
   position:absolute;
-  bottom:20px;
+  bottom:90px;
   width:100%;
   display:flex;
   justify-content:space-around;
 }
 .like{background:#00e676;color:#000}
 .nope{background:#ff1744}
-#chatBox{
-  width:100%;
-  max-width:420px;
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-}
+
+/* CHAT */
 #mensajes{
-  flex:1;
+  height:calc(100vh - 140px);
   overflow:auto;
   padding:10px;
 }
-.msg{
-  margin:6px 0;
-}
+.msg{margin:6px 0}
 .yo{color:#00e676}
 .otro{color:#fff}
-input{
-  padding:12px;
+
+/* BARRA INFERIOR */
+#nav{
+  position:fixed;
+  bottom:0;
   width:100%;
+  height:70px;
+  background:#111;
+  display:flex;
+  border-top:1px solid #333;
+}
+#nav button{
+  flex:1;
+  background:none;
+  border:none;
+  color:#aaa;
+  font-size:14px;
+}
+#nav button.active{
+  color:#ff00ff;
+  font-weight:bold;
+}
+button{
+  padding:12px;
+  border-radius:30px;
+  border:none;
+  font-weight:bold;
+}
+input{
+  width:100%;
+  padding:12px;
   border:none;
   outline:none;
 }
@@ -84,7 +115,7 @@ input{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } 
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, updateProfile } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, onSnapshot, query, orderBy } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -103,15 +134,16 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let usuarios=[], index=0, yo=null, chatId=null;
+let yo=null, usuarios=[], index=0, chatId=null;
 
-window.loginGoogle = async()=>{ await signInWithPopup(auth,provider); };
+/* LOGIN */
+window.loginGoogle=async()=>{await signInWithPopup(auth,provider)};
 
 onAuthStateChanged(auth, async user=>{
   if(!user) return;
   yo=user;
   document.getElementById("login").style.display="none";
-  document.getElementById("swipe").style.display="block";
+  mostrarVista("descubrir");
 
   const ref=doc(db,"users",user.uid);
   if(!(await getDoc(ref)).exists()){
@@ -121,46 +153,51 @@ onAuthStateChanged(auth, async user=>{
       foto:user.photoURL
     });
   }
+  document.getElementById("nick").innerText=user.displayName;
+  document.getElementById("fotoPerfil").src=user.photoURL;
+
   cargarUsuarios();
 });
 
+/* NAVEGACIÓN */
+window.mostrarVista=(id)=>{
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("btn_"+id).classList.add("active");
+};
+
+/* SWIPE */
 async function cargarUsuarios(){
   const snap=await getDocs(collection(db,"users"));
   usuarios=snap.docs.map(d=>d.data()).filter(u=>u.uid!==yo.uid);
-  mostrar();
+  mostrarPerfil();
 }
 
-function mostrar(){
-  if(index>=usuarios.length){
-    alert("No hay más perfiles");
-    return;
-  }
+function mostrarPerfil(){
+  if(index>=usuarios.length) return;
   const u=usuarios[index];
-  document.getElementById("foto").src=u.foto;
-  document.getElementById("nombre").innerText=u.nombre;
+  document.getElementById("fotoSwipe").src=u.foto;
+  document.getElementById("nombreSwipe").innerText=u.nombre;
 }
 
 window.like=async()=>{
   const u=usuarios[index];
-  await setDoc(doc(db,"likes",yo.uid+"_"+u.uid),{de:yo.uid,a:u.uid});
+  await setDoc(doc(db,"likes",yo.uid+"_"+u.uid),{});
   const match=await getDoc(doc(db,"likes",u.uid+"_"+yo.uid));
   if(match.exists()){
-    iniciarChat(u);
+    chatId=[yo.uid,u.uid].sort().join("_");
+    mostrarVista("chat");
+    escucharChat();
     return;
   }
-  index++; mostrar();
+  index++; mostrarPerfil();
 };
+window.nope=()=>{index++; mostrarPerfil()};
 
-window.nope=()=>{ index++; mostrar(); };
-
-function iniciarChat(u){
-  chatId=[yo.uid,u.uid].sort().join("_");
-  document.getElementById("swipe").style.display="none";
-  document.getElementById("chat").style.display="flex";
-  escucharMensajes();
-}
-
-function escucharMensajes(){
+/* CHAT */
+function escucharChat(){
   const q=query(collection(db,"chats",chatId,"msgs"),orderBy("time"));
   onSnapshot(q,snap=>{
     const div=document.getElementById("mensajes");
@@ -177,31 +214,33 @@ function escucharMensajes(){
 }
 
 window.enviar=async()=>{
-  const txt=document.getElementById("texto");
-  if(!txt.value) return;
+  const t=document.getElementById("texto");
+  if(!t.value) return;
   await addDoc(collection(db,"chats",chatId,"msgs"),{
     uid:yo.uid,
-    texto:txt.value,
+    texto:t.value,
     time:Date.now()
   });
-  txt.value="";
+  t.value="";
 };
 </script>
 </head>
 
 <body>
 
+<!-- LOGIN -->
 <div id="login">
   <div class="card">
-    <h2>Match</h2>
+    <h2>Chat</h2>
     <button onclick="loginGoogle()">Entrar con Google</button>
   </div>
 </div>
 
-<div id="swipe" style="display:none">
-  <div id="perfil">
-    <img id="foto">
-    <div class="info"><h2 id="nombre"></h2></div>
+<!-- DESCUBRIR -->
+<div id="descubrir" class="view">
+  <div id="perfilSwipe">
+    <img id="fotoSwipe">
+    <div class="info"><h2 id="nombreSwipe"></h2></div>
     <div class="acciones">
       <button class="nope" onclick="nope()">❌</button>
       <button class="like" onclick="like()">❤️</button>
@@ -209,11 +248,31 @@ window.enviar=async()=>{
   </div>
 </div>
 
-<div id="chat" style="display:none">
-  <div id="chatBox">
-    <div id="mensajes"></div>
-    <input id="texto" placeholder="Escribe..." onkeydown="if(event.key==='Enter')enviar()">
+<!-- CHAT -->
+<div id="chat" class="view">
+  <div id="mensajes"></div>
+  <input id="texto" placeholder="Mensaje..." onkeydown="if(event.key==='Enter')enviar()">
+</div>
+
+<!-- MATCHES (placeholder) -->
+<div id="matches" class="view">
+  <h3 style="text-align:center">Matches</h3>
+</div>
+
+<!-- PERFIL -->
+<div id="perfil" class="view">
+  <div class="card">
+    <img id="fotoPerfil">
+    <h3 id="nick"></h3>
   </div>
+</div>
+
+<!-- BARRA INFERIOR -->
+<div id="nav">
+  <button id="btn_descubrir" onclick="mostrarVista('descubrir')">🔥<br>Descubrir</button>
+  <button id="btn_chat" onclick="mostrarVista('chat')">💬<br>Chat</button>
+  <button id="btn_matches" onclick="mostrarVista('matches')">❤️<br>Matches</button>
+  <button id="btn_perfil" onclick="mostrarVista('perfil')">⚙️<br>Perfil</button>
 </div>
 
 </body>
