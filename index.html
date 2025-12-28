@@ -56,7 +56,7 @@ button{
   </select>
 
   <button onclick="registrar()">REGISTRARSE</button>
-  <button onclick="login()">ENTRAR</button>
+  <button onclick="loginUser()">ENTRAR</button>
 </div>
 
 <div class="container" id="chat">
@@ -92,6 +92,14 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const tipoEl = document.getElementById("tipo");
+const infoUser = document.getElementById("infoUser");
+const monedasEl = document.getElementById("monedas");
+const texto = document.getElementById("texto");
+const mensajes = document.getElementById("mensajes");
+
 let usuario=null;
 let tipo="";
 let monedas=0;
@@ -112,16 +120,8 @@ function registrar(){
   .catch(e=>alert(e.message));
 }
 
-const email=document.getElementById("email");
-const password=document.getElementById("password");
-const tipoEl=document.getElementById("tipo");
-const infoUser=document.getElementById("infoUser");
-const monedasEl=document.getElementById("monedas");
-const texto=document.getElementById("texto");
-const mensajes=document.getElementById("mensajes");
-
 /* LOGIN */
-function login(){
+function loginUser(){
   auth.signInWithEmailAndPassword(email.value, password.value)
   .catch(e=>alert(e.message));
 }
@@ -137,8 +137,9 @@ auth.onAuthStateChanged(u=>{
     monedas=d.monedas;
     infoUser.innerText=d.email+" ("+tipo+")";
     monedasEl.innerText=monedas;
-    login.style.display="none";
-    chat.style.display="block";
+
+    document.getElementById("login").style.display="none";
+    document.getElementById("chat").style.display="block";
   });
 });
 
@@ -183,7 +184,7 @@ function regalo(){
   });
 
   db.collection("mensajes").add({
-    texto:"🎁 Regalo enviado a las chicas (+10)",
+    texto:"🎁 Regalo enviado (+10 a chicas)",
     tipo:"regalo",
     time:Date.now()
   });
