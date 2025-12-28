@@ -14,17 +14,17 @@ body{
   text-align:center;
 }
 .container{
-  max-width:420px;
-  margin:60px auto;
+  max-width:500px;
+  margin:30px auto;
   background:rgba(0,0,0,.9);
-  padding:25px;
+  padding:20px;
   border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
 }
-button,input{
+button,input,select{
   width:100%;
-  padding:14px;
-  margin-top:10px;
+  padding:12px;
+  margin-top:8px;
   border:none;
   border-radius:8px;
 }
@@ -34,10 +34,26 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
-input{
+input,select{
   background:#111;
   color:#fff;
   border:1px solid #333;
+}
+#chat{
+  height:200px;
+  overflow-y:auto;
+  background:#000;
+  border:1px solid #333;
+  padding:10px;
+  margin-top:10px;
+}
+.msg{
+  text-align:left;
+  margin-bottom:6px;
+}
+.regalo{
+  color:#ffd700;
+  font-weight:bold;
 }
 </style>
 
@@ -51,48 +67,160 @@ import {
   signOut,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  addDoc,
+  collection,
+  onSnapshot,
+  serverTimestamp,
+  increment
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 CONFIGURACIÓN REAL DE TU FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
   projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.firebasestorage.app",
+  storageBucket: "chat-1adf8.appspot.com",
   messagingSenderId: "466107819820",
   appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
 
-/* INICIALIZAR */
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-/* LOGIN GOOGLE */
-window.loginGoogle = async () => {
-  try{
-    await signInWithPopup(auth, provider);
-  }catch(e){
-    alert("Error al iniciar sesión con Google");
-  }
+let userData = null;
+
+/* LOGIN */
+window.loginGoogle = async ()=>{
+  await signInWithPopup(auth, provider);
 };
 
-/* ESTADO DE SESIÓN */
-onAuthStateChanged(auth, user=>{
-  if(user){
-    document.getElementById("login").style.display="none";
-    document.getElementById("cuenta").style.display="block";
-    document.getElementById("usuario").innerText =
-      user.displayName || user.email;
+/* SESIÓN */
+onAuthStateChanged(auth, async user=>{
+  if(!user) return;
+
+  document.getElementById("login").style.display="none";
+  document.getElementById("perfil").style.display="block";
+
+  const ref = doc(db,"usuarios",user.uid);
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    await setDoc(ref,{
+      uid:user.uid,
+      email:user.email,
+      nick:user.displayName || "",
+      genero:"",
+      monedas:100,
+      ganancias:0,
+      creado:serverTimestamp()
+    });
   }
+
+  userData = (await getDoc(ref)).data();
+  document.getElementById("nick").value = userData.nick;
+  actualizarUI();
+  escucharChat();
 });
 
-/* GUARDAR NICK */
-window.guardarNick = async ()=>{
+/* GUARDAR PERFIL */
+window.guardarPerfil = async ()=>{
   const nick = document.getElementById("nick").value;
-  if(!nick) return alert("Escribe un nick");
+  const genero = document.getElementById("genero").value;
+  if(!nick || !genero) return alert("Completa nick y género");
+
   await updateProfile(auth.currentUser,{displayName:nick});
-  document.getElementById("usuario").innerText = nick;
-  alert("Nick guardado");
+  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+    nick, genero
+  });
+
+  userData.nick = nick;
+  userData.genero = genero;
+  actualizarUI();
+};
+
+/* UI */
+function actualizarUI(){
+  document.getElementById("info").innerText =
+    userData.nick+" | "+userData.genero+
+    " | 💰 "+userData.monedas+
+    " | 💵 "+userData.ganancias;
+}
+
+/* CHAT GENERAL */
+window.enviarMensaje = async ()=>{
+  const t = document.getElementById("texto").value;
+  if(!t) return;
+  await addDoc(collection(db,"chat"),{
+    nick:userData.nick,
+    texto:t,
+    time:serverTimestamp()
+  });
+  document.getElementById("texto").value="";
+};
+
+function escucharChat(){
+  onSnapshot(collection(db,"chat"), snap=>{
+    const c = document.getElementById("chat");
+    c.innerHTML="";
+    snap.forEach(d=>{
+      const m = d.data();
+      const div = document.createElement("div");
+      div.className="msg";
+      div.innerText = m.nick+": "+m.texto;
+      c.appendChild(div);
+      c.scrollTop = c.scrollHeight;
+    });
+  });
+}
+
+/* REGALOS */
+window.enviarRegalo = async (nombre,precio)=>{
+  if(userData.monedas < precio) return alert("No tienes monedas");
+
+  const ganancia = Math.floor(precio * 0.6);
+
+  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+    monedas: increment(-precio)
+  });
+
+  await addDoc(collection(db,"chat"),{
+    nick:userData.nick,
+    texto:`🎁 Envió ${nombre} (${precio} monedas)`,
+    time:serverTimestamp()
+  });
+
+  userData.monedas -= precio;
+  actualizarUI();
+};
+
+/* ANUNCIO */
+window.verAnuncio = ()=>{
+  const b = document.getElementById("anuncio");
+  b.disabled=true;
+  let s=30;
+  b.innerText="Viendo anuncio... "+s;
+  const i=setInterval(async ()=>{
+    s--;
+    b.innerText="Viendo anuncio... "+s;
+    if(s<=0){
+      clearInterval(i);
+      await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+        monedas: increment(100)
+      });
+      userData.monedas+=100;
+      actualizarUI();
+      b.innerText="🎥 Ver anuncio (+100)";
+      b.disabled=false;
+      alert("Ganaste 100 monedas");
+    }
+  },1000);
 };
 
 /* SALIR */
@@ -107,16 +235,34 @@ window.salir = async ()=>{
 
 <div class="container" id="login">
   <h2>🔥 CHAT 🔥</h2>
-  <p>Accede con tu cuenta Google</p>
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div class="container" id="cuenta" style="display:none">
-  <h3>Bienvenido</h3>
-  <p>👤 <span id="usuario"></span></p>
+<div class="container" id="perfil" style="display:none">
+  <h3>Perfil</h3>
+  <input id="nick" placeholder="Nick">
+  <select id="genero">
+    <option value="">Género</option>
+    <option value="hombre">Hombre</option>
+    <option value="mujer">Mujer</option>
+  </select>
+  <button onclick="guardarPerfil()">Guardar perfil</button>
 
-  <input id="nick" placeholder="Cambiar nick">
-  <button onclick="guardarNick()">Guardar nick</button>
+  <p id="info"></p>
+
+  <button id="anuncio" onclick="verAnuncio()">🎥 Ver anuncio (+100)</button>
+
+  <hr>
+
+  <h3>Chat general (GRATIS)</h3>
+  <div id="chat"></div>
+  <input id="texto" placeholder="Mensaje">
+  <button onclick="enviarMensaje()">Enviar</button>
+
+  <h4>Regalos</h4>
+  <button onclick="enviarRegalo('🌹 Rosa',5)">🌹 Rosa (5)</button>
+  <button onclick="enviarRegalo('🍷 Trago',15)">🍷 Trago (15)</button>
+  <button onclick="enviarRegalo('💎 Diamante',50)">💎 Diamante (50)</button>
 
   <br><br>
   <button onclick="salir()">Salir</button>
