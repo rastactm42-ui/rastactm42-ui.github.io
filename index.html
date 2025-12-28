@@ -73,24 +73,7 @@ button{
   <button onclick="salir()">🚪 Salir</button>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.firebasestorage.app",
-  messagingSenderId: "466107819820",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-</script>
-
 let user="", tipo="", monedas=0;
 
 function guardar(){
