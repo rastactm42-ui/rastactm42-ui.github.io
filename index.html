@@ -4,265 +4,204 @@
 <meta charset="UTF-8">
 <title>CHAT</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:linear-gradient(135deg,#000,#1a0033,#000);
-  color:#fff;
-}
+body{margin:0;font-family:Arial;background:#000;color:#fff}
 .container{
-  max-width:420px;
-  margin:30px auto;
-  background:rgba(0,0,0,.9);
-  padding:18px;
-  border-radius:16px;
-  box-shadow:0 0 25px #ff00ff;
+ max-width:420px;margin:20px auto;
+ background:#111;padding:15px;border-radius:12px
 }
-h2{text-align:center;color:#ff00ff}
+h2,h3{text-align:center;color:#ff00ff}
 button,input,select{
-  width:100%;
-  padding:12px;
-  margin-top:8px;
-  border:none;
-  border-radius:8px;
+ width:100%;padding:10px;margin-top:6px;
+ border:none;border-radius:6px
 }
-button{
-  background:linear-gradient(90deg,#ff00ff,#ff0066);
-  color:#fff;
-  font-weight:bold;
+button{background:#ff00ff;color:#fff;font-weight:bold}
+input,select{background:#000;color:#fff;border:1px solid #333}
+#mensajes,#mensajesPriv,#adminData{
+ height:220px;overflow:auto;border:1px solid #333;padding:6px
 }
-input,select{
-  background:#111;
-  color:#fff;
-  border:1px solid #333;
-}
-#chat,#privado,#setup{display:none}
-#mensajes,#mensajesPriv{
-  height:220px;
-  overflow-y:auto;
-  background:#000;
-  border:1px solid #333;
-  padding:8px;
-}
-.msg{margin-bottom:6px}
-.userItem{
-  padding:6px;
-  border-bottom:1px solid #333;
-  cursor:pointer;
-}
+.msg{margin-bottom:4px}
+.userItem{padding:6px;border-bottom:1px solid #333;cursor:pointer}
 .userItem:hover{background:#222}
-.timer{
-  text-align:center;
-  margin-top:10px;
-  font-weight:bold;
-  color:#00ffcc;
+.adminBox{
+ border:1px solid #ff00ff;padding:8px;margin-top:8px
 }
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup,
-  onAuthStateChanged, signOut, updateProfile
+ getAuth,GoogleAuthProvider,signInWithPopup,
+ onAuthStateChanged,signOut,updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc,
-  collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, increment
+ getFirestore,doc,getDoc,setDoc,updateDoc,
+ collection,addDoc,onSnapshot,query,orderBy,
+ serverTimestamp,increment
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+/* 🔐 CAMBIA POR TU CORREO */
+const ADMIN_EMAIL = "rastactm42@gmail.com";
 
 /* FIREBASE */
 const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.firebasestorage.app",
-  messagingSenderId: "466107819820",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
+ apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+ authDomain: "chat-1adf8.firebaseapp.com",
+ projectId: "chat-1adf8",
+ storageBucket: "chat-1adf8.firebasestorage.app",
+ messagingSenderId: "466107819820",
+ appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const provider=new GoogleAuthProvider();
 
 let userData=null;
 let privadoCon=null;
 
 /* LOGIN */
-window.loginGoogle = ()=>signInWithPopup(auth,provider);
+window.loginGoogle=()=>signInWithPopup(auth,provider);
 
-/* SESIÓN */
-onAuthStateChanged(auth, async(user)=>{
-  if(!user) return;
-  const ref=doc(db,"usuarios",user.uid);
-  const snap=await getDoc(ref);
-
-  if(!snap.exists()){
-    login.style.display="none";
-    setup.style.display="block";
-  }else{
-    userData=snap.data();
-    entrar();
-  }
+onAuthStateChanged(auth,async(user)=>{
+ if(!user) return;
+ if(user.email===ADMIN_EMAIL){
+   admin.style.display="block";
+   cargarAdmin();
+ }
+ const ref=doc(db,"usuarios",user.uid);
+ const snap=await getDoc(ref);
+ if(!snap.exists()){
+  setup.style.display="block";
+ }else{
+  userData=snap.data();
+  entrar();
+ }
 });
 
 /* PERFIL */
-window.guardarPerfil = async()=>{
-  const nick=nickInput.value;
-  const genero=generoSelect.value;
-  if(!nick||!genero) return alert("Completa todo");
-
-  await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    uid:auth.currentUser.uid,
-    nick,
-    genero,
-    monedas: genero==="hombre"?500:0,
-    ganancias:0
-  });
-  await updateProfile(auth.currentUser,{displayName:nick});
-  location.reload();
+window.guardarPerfil=async()=>{
+ const nick=nickInput.value;
+ const genero=generoSelect.value;
+ if(!nick||!genero) return alert("Completa todo");
+ await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
+  uid:auth.currentUser.uid,
+  nick,
+  genero,
+  monedas: genero==="hombre"?500:0,
+  ganancias:0
+ });
+ await updateProfile(auth.currentUser,{displayName:nick});
+ location.reload();
 };
 
 /* ENTRAR */
 function entrar(){
-  login.style.display="none";
-  setup.style.display="none";
-  chat.style.display="block";
-  usuario.innerText=userData.nick;
-  monedasEl.innerText=userData.monedas;
-  gananciasEl.innerText=userData.ganancias||0;
-  chatGeneral();
-  listarUsuarios();
-
-  if(userData.genero==="hombre"){
-    anuncios.style.display="block";
-  }
+ login.style.display="none";
+ setup.style.display="none";
+ chat.style.display="block";
+ usuario.innerText=userData.nick;
+ monedasEl.innerText=userData.monedas;
+ gananciasEl.innerText=userData.ganancias||0;
+ cargarChat();
+ cargarUsuarios();
+ if(userData.genero==="hombre") anuncios.style.display="block";
 }
 
 /* CHAT GENERAL */
-function chatGeneral(){
-  const q=query(collection(db,"chat"),orderBy("time"));
-  onSnapshot(q,s=>{
-    mensajes.innerHTML="";
-    s.forEach(d=>{
-      const m=d.data();
-      const div=document.createElement("div");
-      div.className="msg";
-      div.style.color=m.tipo==="regalo"?"#FFD700":
-        m.genero==="mujer"?"#ff4fd8":"#4fc3ff";
-      div.innerText=m.nick+": "+m.texto;
-      mensajes.appendChild(div);
-    });
+function cargarChat(){
+ const q=query(collection(db,"chat"),orderBy("time"));
+ onSnapshot(q,s=>{
+  mensajes.innerHTML="";
+  s.forEach(d=>{
+   const m=d.data();
+   const div=document.createElement("div");
+   div.className="msg";
+   div.style.color=m.genero==="mujer"?"#ff66cc":"#66ccff";
+   div.innerText=m.nick+": "+m.texto;
+   mensajes.appendChild(div);
   });
+ });
 }
 
 window.enviarMensaje=async()=>{
-  if(!texto.value) return;
-  await addDoc(collection(db,"chat"),{
-    nick:userData.nick,
-    genero:userData.genero,
-    texto:texto.value,
-    tipo:"texto",
-    time:serverTimestamp()
-  });
-  texto.value="";
+ if(!texto.value) return;
+ await addDoc(collection(db,"chat"),{
+  nick:userData.nick,
+  genero:userData.genero,
+  texto:texto.value,
+  time:serverTimestamp()
+ });
+ texto.value="";
 };
 
 /* USUARIOS */
-function listarUsuarios(){
-  onSnapshot(collection(db,"usuarios"),s=>{
-    lista.innerHTML="";
-    s.forEach(d=>{
-      if(d.id===auth.currentUser.uid) return;
-      const u=d.data();
-      const div=document.createElement("div");
-      div.className="userItem";
-      div.innerText=u.nick+" ("+u.genero+")";
-      div.onclick=()=>abrirPrivado(u);
-      lista.appendChild(div);
-    });
+function cargarUsuarios(){
+ onSnapshot(collection(db,"usuarios"),s=>{
+  lista.innerHTML="";
+  s.forEach(d=>{
+   if(d.id===auth.currentUser.uid) return;
+   const u=d.data();
+   const div=document.createElement("div");
+   div.className="userItem";
+   div.innerText=u.nick+" ("+u.genero+")";
+   div.onclick=()=>abrirPrivado(u);
+   lista.appendChild(div);
   });
+ });
 }
 
-/* CHAT PRIVADO */
+/* PRIVADO */
 function abrirPrivado(u){
-  privadoCon=u;
-  chat.style.display="none";
-  privado.style.display="block";
-  privadoNick.innerText=u.nick;
-  escucharPrivado();
-}
-
-function escucharPrivado(){
-  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
-  const q=query(collection(db,"privados",id,"msgs"),orderBy("time"));
-  onSnapshot(q,s=>{
-    mensajesPriv.innerHTML="";
-    s.forEach(d=>{
-      const m=d.data();
-      const div=document.createElement("div");
-      div.innerText=m.nick+": "+m.texto;
-      mensajesPriv.appendChild(div);
-    });
-  });
+ privadoCon=u;
+ chat.style.display="none";
+ privado.style.display="block";
+ privadoNick.innerText=u.nick;
 }
 
 window.enviarPrivado=async()=>{
-  if(userData.monedas<20) return alert("No tienes monedas");
-
-  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    monedas:increment(-20)
-  });
-
-  if(privadoCon.genero==="mujer"){
-    await updateDoc(doc(db,"usuarios",privadoCon.uid),{
-      ganancias:increment(12)
-    });
-  }
-
-  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
-  await addDoc(collection(db,"privados",id,"msgs"),{
-    nick:userData.nick,
-    texto:textoPriv.value,
-    time:serverTimestamp()
-  });
-
-  userData.monedas-=20;
-  monedasEl.innerText=userData.monedas;
-  textoPriv.value="";
+ if(userData.monedas<20) return alert("No tienes monedas");
+ await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{monedas:increment(-20)});
+ if(privadoCon.genero==="mujer"){
+  await updateDoc(doc(db,"usuarios",privadoCon.uid),{ganancias:increment(12)});
+ }
+ userData.monedas-=20;
+ monedasEl.innerText=userData.monedas;
 };
 
 window.volver=()=>{
-  privado.style.display="none";
-  chat.style.display="block";
+ privado.style.display="none";
+ chat.style.display="block";
 };
 
-/* VER ANUNCIO */
-window.verAnuncio=()=>{
-  let t=10;
-  btnAnuncio.disabled=true;
-  timer.innerText="Viendo anuncio... "+t+"s";
-
-  const intervalo=setInterval(async()=>{
-    t--;
-    timer.innerText="Viendo anuncio... "+t+"s";
-    if(t<=0){
-      clearInterval(intervalo);
-      timer.innerText="¡Ganaste 100 monedas!";
-      btnAnuncio.disabled=false;
-
-      await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-        monedas:increment(100)
-      });
-
-      userData.monedas+=100;
-      monedasEl.innerText=userData.monedas;
-    }
-  },1000);
+/* ANUNCIO */
+window.verAnuncio=async()=>{
+ await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{monedas:increment(100)});
+ userData.monedas+=100;
+ monedasEl.innerText=userData.monedas;
 };
+
+/* 🔥 PANEL ADMIN */
+function cargarAdmin(){
+ onSnapshot(collection(db,"usuarios"),s=>{
+  let total=0,h=0,m=0,gan=0;
+  adminData.innerHTML="";
+  s.forEach(d=>{
+   const u=d.data();
+   total++;
+   if(u.genero==="hombre") h++; else m++;
+   gan+=u.ganancias||0;
+   adminData.innerHTML+=`${u.nick} | ${u.genero} | 💰 ${u.monedas} | 💵 ${u.ganancias||0}<br>`;
+  });
+  stats.innerHTML=`
+   👥 Usuarios: ${total}<br>
+   👨 Hombres: ${h}<br>
+   👩 Mujeres: ${m}<br>
+   💵 Ganancias totales: ${gan}
+  `;
+ });
+}
 
 window.salir=async()=>{await signOut(auth);location.reload();}
 </script>
@@ -271,49 +210,46 @@ window.salir=async()=>{await signOut(auth);location.reload();}
 <body>
 
 <div class="container" id="login">
-  <h2>CHAT</h2>
-  <button onclick="loginGoogle()">Entrar con Google</button>
+<h2>CHAT</h2>
+<button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div class="container" id="setup">
-  <h2>Perfil</h2>
-  <input id="nickInput" placeholder="Nick">
-  <select id="generoSelect">
-    <option value="">Género</option>
-    <option value="hombre">Hombre</option>
-    <option value="mujer">Mujer</option>
-  </select>
-  <button onclick="guardarPerfil()">Guardar</button>
+<div class="container" id="setup" style="display:none">
+<h2>Perfil</h2>
+<input id="nickInput" placeholder="Nick">
+<select id="generoSelect">
+<option value="">Género</option>
+<option value="hombre">Hombre</option>
+<option value="mujer">Mujer</option>
+</select>
+<button onclick="guardarPerfil()">Guardar</button>
 </div>
 
-<div class="container" id="chat">
-  👤 <span id="usuario"></span><br>
-  💰 Monedas: <span id="monedasEl"></span><br>
-  💵 Ganancias: <span id="gananciasEl">0</span>
-
-  <div id="mensajes"></div>
-
-  <input id="texto" placeholder="Mensaje gratis">
-  <button onclick="enviarMensaje()">Enviar</button>
-
-  <div id="anuncios" style="display:none">
-    <hr>
-    <button id="btnAnuncio" onclick="verAnuncio()">🎥 Ver anuncio (+100 monedas)</button>
-    <div class="timer" id="timer"></div>
-  </div>
-
-  <h3>Usuarios</h3>
-  <div id="lista"></div>
-
-  <button onclick="salir()">Salir</button>
+<div class="container" id="chat" style="display:none">
+👤 <span id="usuario"></span><br>
+💰 <span id="monedasEl"></span> monedas<br>
+💵 <span id="gananciasEl"></span> ganancias
+<div id="mensajes"></div>
+<input id="texto"><button onclick="enviarMensaje()">Enviar</button>
+<div id="anuncios" style="display:none">
+<button onclick="verAnuncio()">🎥 Ver anuncio (+100)</button>
+</div>
+<h3>Usuarios</h3>
+<div id="lista"></div>
+<button onclick="salir()">Salir</button>
 </div>
 
-<div class="container" id="privado">
-  <h2>Privado con <span id="privadoNick"></span></h2>
-  <div id="mensajesPriv"></div>
-  <input id="textoPriv" placeholder="Mensaje privado (20)">
-  <button onclick="enviarPrivado()">Enviar</button>
-  <button onclick="volver()">Volver</button>
+<div class="container" id="privado" style="display:none">
+<h2>Privado con <span id="privadoNick"></span></h2>
+<div id="mensajesPriv"></div>
+<button onclick="enviarPrivado()">Enviar (20)</button>
+<button onclick="volver()">Volver</button>
+</div>
+
+<div class="container" id="admin" style="display:none">
+<h2>ADMIN</h2>
+<div class="adminBox" id="stats"></div>
+<div class="adminBox" id="adminData"></div>
 </div>
 
 </body>
