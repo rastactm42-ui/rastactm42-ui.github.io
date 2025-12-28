@@ -132,6 +132,11 @@ function enviarRegalo(){
   monedas-=10;
   document.getElementById("monedas").innerText=monedas;
   const div=document.createElement("div");
-  div.className="mensaje regalo"
+  div.className="mensaje regalo";
+  div.textContent="🎁 "+user+" envió un regalo";
+  document.getElementById("mensajes").appendChild(div);
+}
+</script>
 
-
+</body>
+</html>
