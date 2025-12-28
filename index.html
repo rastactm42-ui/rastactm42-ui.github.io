@@ -53,6 +53,12 @@ input,select{
   cursor:pointer;
 }
 .userItem:hover{background:#222}
+.timer{
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
+  color:#00ffcc;
+}
 </style>
 
 <script type="module">
@@ -130,6 +136,10 @@ function entrar(){
   gananciasEl.innerText=userData.ganancias||0;
   chatGeneral();
   listarUsuarios();
+
+  if(userData.genero==="hombre"){
+    anuncios.style.display="block";
+  }
 }
 
 /* CHAT GENERAL */
@@ -177,7 +187,7 @@ function listarUsuarios(){
   });
 }
 
-/* PRIVADO */
+/* CHAT PRIVADO */
 function abrirPrivado(u){
   privadoCon=u;
   chat.style.display="none";
@@ -203,16 +213,13 @@ function escucharPrivado(){
 window.enviarPrivado=async()=>{
   if(userData.monedas<20) return alert("No tienes monedas");
 
-  const mujer = privadoCon.genero==="mujer";
-  const ganancia = mujer ? 12 : 0;
-
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
     monedas:increment(-20)
   });
 
-  if(mujer){
+  if(privadoCon.genero==="mujer"){
     await updateDoc(doc(db,"usuarios",privadoCon.uid),{
-      ganancias:increment(ganancia)
+      ganancias:increment(12)
     });
   }
 
@@ -233,29 +240,28 @@ window.volver=()=>{
   chat.style.display="block";
 };
 
-/* REGALO */
-window.enviarRegalo=async(nombre,precio)=>{
-  if(userData.monedas<precio) return;
+/* VER ANUNCIO */
+window.verAnuncio=()=>{
+  let t=10;
+  btnAnuncio.disabled=true;
+  timer.innerText="Viendo anuncio... "+t+"s";
 
-  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    monedas:increment(-precio)
-  });
+  const intervalo=setInterval(async()=>{
+    t--;
+    timer.innerText="Viendo anuncio... "+t+"s";
+    if(t<=0){
+      clearInterval(intervalo);
+      timer.innerText="¡Ganaste 100 monedas!";
+      btnAnuncio.disabled=false;
 
-  if(userData.genero==="hombre"){
-    await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-      monedas:increment(0)
-    });
-  }
+      await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+        monedas:increment(100)
+      });
 
-  await addDoc(collection(db,"chat"),{
-    nick:userData.nick,
-    texto:`🎁 ${nombre} (${precio})`,
-    tipo:"regalo",
-    time:serverTimestamp()
-  });
-
-  userData.monedas-=precio;
-  monedasEl.innerText=userData.monedas;
+      userData.monedas+=100;
+      monedasEl.innerText=userData.monedas;
+    }
+  },1000);
 };
 
 window.salir=async()=>{await signOut(auth);location.reload();}
@@ -284,11 +290,17 @@ window.salir=async()=>{await signOut(auth);location.reload();}
   👤 <span id="usuario"></span><br>
   💰 Monedas: <span id="monedasEl"></span><br>
   💵 Ganancias: <span id="gananciasEl">0</span>
+
   <div id="mensajes"></div>
+
   <input id="texto" placeholder="Mensaje gratis">
   <button onclick="enviarMensaje()">Enviar</button>
 
-  <button onclick="enviarRegalo('Rosa',50)">🌹 50</button>
+  <div id="anuncios" style="display:none">
+    <hr>
+    <button id="btnAnuncio" onclick="verAnuncio()">🎥 Ver anuncio (+100 monedas)</button>
+    <div class="timer" id="timer"></div>
+  </div>
 
   <h3>Usuarios</h3>
   <div id="lista"></div>
@@ -297,11 +309,10 @@ window.salir=async()=>{await signOut(auth);location.reload();}
 </div>
 
 <div class="container" id="privado">
-  <h2>Chat privado con <span id="privadoNick"></span></h2>
-  <p>Costo: 20 monedas</p>
+  <h2>Privado con <span id="privadoNick"></span></h2>
   <div id="mensajesPriv"></div>
-  <input id="textoPriv" placeholder="Mensaje privado">
-  <button onclick="enviarPrivado()">Enviar (20)</button>
+  <input id="textoPriv" placeholder="Mensaje privado (20)">
+  <button onclick="enviarPrivado()">Enviar</button>
   <button onclick="volver()">Volver</button>
 </div>
 
