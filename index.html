@@ -11,9 +11,25 @@ body{
   background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
 }
+
+/* BANNER MUJERES ONLINE */
+.banner-online{
+  background:linear-gradient(90deg,#ff0066,#ff00ff);
+  text-align:center;
+  padding:16px;
+  font-size:22px;
+  font-weight:bold;
+  animation:parpadeo 1.2s infinite;
+}
+@keyframes parpadeo{
+  0%{opacity:1}
+  50%{opacity:.4}
+  100%{opacity:1}
+}
+
 .container{
   max-width:420px;
-  margin:40px auto;
+  margin:30px auto;
   background:rgba(0,0,0,.9);
   padding:20px;
   border-radius:16px;
@@ -43,6 +59,11 @@ button{
 </head>
 
 <body>
+
+<!-- MUJERES ONLINE -->
+<div class="banner-online">
+  💃 MUJERES ONLINE: <span id="contadorMujeres">0</span>
+</div>
 
 <div class="container" id="login">
   <h2>🔥 REGISTRO 🔥</h2>
@@ -99,10 +120,17 @@ const infoUser = document.getElementById("infoUser");
 const monedasEl = document.getElementById("monedas");
 const texto = document.getElementById("texto");
 const mensajes = document.getElementById("mensajes");
+const contadorMujeres = document.getElementById("contadorMujeres");
 
 let usuario=null;
 let tipo="";
 let monedas=0;
+
+/* CONTADOR MUJERES ONLINE */
+db.collection("usuarios").where("tipo","==","mujer")
+.onSnapshot(snap=>{
+  contadorMujeres.innerText = snap.size;
+});
 
 /* REGISTRO */
 function registrar(){
