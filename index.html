@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Chat</title>
+
 <style>
 body{
   margin:0;
@@ -17,10 +18,8 @@ body{
   padding:20px;
   border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
-  animation:pop .5s;
 }
-@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1}}
-h2{text-align:center;color:#ff00ff;text-shadow:0 0 10px}
+h2{text-align:center;color:#ff00ff}
 input,select,button{
   width:100%;padding:12px;margin:6px 0;
   border:none;border-radius:8px;
@@ -29,7 +28,6 @@ input,select{background:#111;color:#fff;border:1px solid #333}
 button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
   color:#fff;font-weight:bold;cursor:pointer;
-  box-shadow:0 0 12px #ff00ff;
 }
 #chat{display:none}
 #mensajes{
@@ -44,6 +42,7 @@ button{
 .panel{font-size:14px;margin-bottom:6px}
 </style>
 </head>
+
 <body>
 
 <div class="container" id="login">
@@ -69,11 +68,28 @@ button{
   <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
   <button onclick="regalo()">🎁 Enviar regalo (10)</button>
-
   <button onclick="salir()">🚪 Salir</button>
 </div>
 
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 <script>
+// CONFIG FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  storageBucket: "chat-1adf8.firebasestorage.app",
+  messagingSenderId: "466107819820",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// CHAT
 let user="", tipo="", monedas=0;
 
 function guardar(){
@@ -86,18 +102,17 @@ function cargar(){
   user=localStorage.getItem("user");
   tipo=localStorage.getItem("tipo");
   monedas=parseInt(localStorage.getItem("monedas")||"100");
-
   if(user && tipo){
-    document.getElementById("login").style.display="none";
-    document.getElementById("chat").style.display="block";
-    document.getElementById("infoUser").innerText=user+" ("+tipo+")";
-    document.getElementById("monedas").innerText=monedas;
+    login.style.display="none";
+    chat.style.display="block";
+    infoUser.innerText=user+" ("+tipo+")";
+    monedasEl.innerText=monedas;
   }
 }
 
 function entrar(){
-  user=document.getElementById("usuario").value;
-  tipo=document.getElementById("tipo").value;
+  user=usuario.value;
+  tipo=tipoEl.value;
   if(!user) return alert("Ingresa correo o número");
   monedas=100;
   guardar();
@@ -105,31 +120,55 @@ function entrar(){
 }
 
 function enviar(){
-  const t=document.getElementById("texto").value;
-  if(!t) return;
-  const d=document.createElement("div");
-  d.className="mensaje "+tipo;
-  d.textContent=user+": "+t;
-  document.getElementById("mensajes").appendChild(d);
-  document.getElementById("texto").value="";
+  if(!texto.value) return;
+  db.collection("mensajes").add({
+    user,
+    tipo,
+    texto:texto.value,
+    time:Date.now()
+  });
+  texto.value="";
 }
+
+db.collection("mensajes").orderBy("time")
+.onSnapshot(s=>{
+  mensajes.innerHTML="";
+  s.forEach(d=>{
+    const m=d.data();
+    const div=document.createElement("div");
+    div.className="mensaje "+m.tipo;
+    div.textContent=m.user+": "+m.texto;
+    mensajes.appendChild(div);
+  });
+});
 
 function regalo(){
   if(tipo!=="hombre") return alert("Solo hombres envían regalos");
-  if(monedas<10) return alert("No tienes monedas");
+  if(monedas<10) return alert("Sin monedas");
   monedas-=10;
-  document.getElementById("monedas").innerText=monedas;
+  monedasEl.innerText=monedas;
   guardar();
-  const d=document.createElement("div");
-  d.className="mensaje regalo";
-  d.textContent="🎁 "+user+" envió un regalo";
-  document.getElementById("mensajes").appendChild(d);
+  db.collection("mensajes").add({
+    user,
+    tipo:"regalo",
+    texto:"🎁 Envió un regalo",
+    time:Date.now()
+  });
 }
 
 function salir(){
   localStorage.clear();
   location.reload();
 }
+
+const usuario=document.getElementById("usuario");
+const tipoEl=document.getElementById("tipo");
+const texto=document.getElementById("texto");
+const mensajes=document.getElementById("mensajes");
+const monedasEl=document.getElementById("monedas");
+const infoUser=document.getElementById("infoUser");
+const login=document.getElementById("login");
+const chat=document.getElementById("chat");
 
 cargar();
 </script>
