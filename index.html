@@ -2,30 +2,31 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>CHAT</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:#0b0014;
+  background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
+  text-align:center;
 }
 .container{
   max-width:420px;
-  margin:30px auto;
-  background:#12001f;
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 0 20px #ff00ff;
+  margin:60px auto;
+  background:rgba(0,0,0,.9);
+  padding:25px;
+  border-radius:16px;
+  box-shadow:0 0 25px #ff00ff;
 }
-h2,h3{text-align:center;color:#ff4dd2}
-button,input,select{
+button,input{
   width:100%;
-  padding:12px;
-  margin:6px 0;
-  border-radius:8px;
+  padding:14px;
+  margin-top:10px;
   border:none;
+  border-radius:8px;
 }
 button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
@@ -33,73 +34,91 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
-input,select{
-  background:#000;
+input{
+  background:#111;
   color:#fff;
   border:1px solid #333;
 }
-#app,#perfil{display:none}
-#mensajes{
-  height:180px;
-  background:#000;
-  overflow:auto;
-  padding:8px;
-  border-radius:8px;
-}
-.msg{margin-bottom:5px}
 </style>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+/* 🔴 PEGA AQUÍ TUS DATOS REALES */
+const firebaseConfig = {
+  apiKey: "PEGA_AQUI_TU_API_KEY",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  appId: "PEGA_AQUI_TU_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+/* LOGIN GOOGLE */
+window.loginGoogle = async () => {
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    alert("Error: " + e.message);
+  }
+};
+
+/* SESIÓN */
+onAuthStateChanged(auth, user=>{
+  if(user){
+    document.getElementById("login").style.display="none";
+    document.getElementById("cuenta").style.display="block";
+    document.getElementById("user").innerText =
+      user.displayName || user.email;
+  }
+});
+
+/* GUARDAR NICK */
+window.guardarNick = async ()=>{
+  const nick = document.getElementById("nick").value;
+  if(!nick) return alert("Escribe un nick");
+  await updateProfile(auth.currentUser,{displayName:nick});
+  document.getElementById("user").innerText = nick;
+  alert("Nick guardado");
+};
+
+/* SALIR */
+window.salir = async ()=>{
+  await signOut(auth);
+  location.reload();
+};
+</script>
 </head>
 
 <body>
 
 <div class="container" id="login">
   <h2>🔥 CHAT 🔥</h2>
-
-  <button onclick="loginGoogle()">🔵 Entrar con Google</button>
-
-  <hr style="border:1px solid #333">
-
-  <input id="telefono" placeholder="+51 999999999">
-  <div id="recaptcha"></div>
-  <button onclick="loginTelefono()">📱 Entrar con Teléfono</button>
-
-  <input id="codigo" placeholder="Código SMS">
-  <button onclick="verificarCodigo()">✔ Verificar código</button>
+  <p>Accede con tu cuenta Google</p>
+  <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div class="container" id="perfil">
-  <h2>Completa tu perfil</h2>
-  <input id="nick" placeholder="Tu nick">
-  <select id="tipo">
-    <option value="">Selecciona</option>
-    <option value="hombre">👨 Hombre</option>
-    <option value="mujer">👩 Mujer</option>
-  </select>
-  <button onclick="guardarPerfil()">GUARDAR</button>
+<div class="container" id="cuenta" style="display:none">
+  <h3>Bienvenido</h3>
+  <p>👤 <span id="user"></span></p>
+
+  <input id="nick" placeholder="Cambiar nick">
+  <button onclick="guardarNick()">Guardar nick</button>
+
+  <br><br>
+  <button onclick="salir()">Salir</button>
 </div>
 
-<div class="container" id="app">
-  <h3 id="info"></h3>
-  <div id="mensajes"></div>
-  <input id="texto" placeholder="Escribe un mensaje">
-  <button onclick="enviar()">ENVIAR</button>
-  <button onclick="salir()">SALIR</button>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
-};
-
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-let confi
+</body>
+</html>
