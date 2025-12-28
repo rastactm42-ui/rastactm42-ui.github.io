@@ -107,4 +107,32 @@ function entrar(){
 function enviar(){
   const t=document.getElementById("texto").value;
   if(!t) return;
-  const d=docu
+  const d=document.createElement("div");
+  d.className="mensaje "+tipo;
+  d.textContent=user+": "+t;
+  document.getElementById("mensajes").appendChild(d);
+  document.getElementById("texto").value="";
+}
+
+function regalo(){
+  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
+  if(monedas<10) return alert("No tienes monedas");
+  monedas-=10;
+  document.getElementById("monedas").innerText=monedas;
+  guardar();
+  const d=document.createElement("div");
+  d.className="mensaje regalo";
+  d.textContent="🎁 "+user+" envió un regalo";
+  document.getElementById("mensajes").appendChild(d);
+}
+
+function salir(){
+  localStorage.clear();
+  location.reload();
+}
+
+cargar();
+</script>
+
+</body>
+</html>
