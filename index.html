@@ -20,11 +20,11 @@ body{
   box-shadow:0 0 25px #ff00ff;
 }
 h2{text-align:center;color:#ff00ff}
-input,select,button{
+input,button{
   width:100%;padding:12px;margin:6px 0;
   border:none;border-radius:8px;
 }
-input,select{background:#111;color:#fff;border:1px solid #333}
+input{background:#111;color:#fff;border:1px solid #333}
 button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
   color:#fff;font-weight:bold;cursor:pointer;
@@ -36,9 +36,6 @@ button{
   padding:10px;margin-bottom:8px;
 }
 .mensaje{margin-bottom:6px}
-.hombre{color:#4da6ff}
-.chica{color:#ff66cc}
-.regalo{color:#ffd700;font-weight:bold}
 .panel{font-size:14px;margin-bottom:6px}
 </style>
 </head>
@@ -46,13 +43,11 @@ button{
 <body>
 
 <div class="container" id="login">
-  <h2>🔥 CHAT 🔥</h2>
-  <input id="usuario" placeholder="Correo o número">
-  <select id="tipo">
-    <option value="hombre">👨 Hombre</option>
-    <option value="chica">👩 Chica</option>
-  </select>
-  <button onclick="entrar()">ENTRAR</button>
+  <h2>🔥 REGISTRO / LOGIN 🔥</h2>
+  <input id="email" placeholder="Correo electrónico">
+  <input id="password" type="password" placeholder="Contraseña">
+  <button onclick="registrar()">REGISTRARSE</button>
+  <button onclick="login()">INICIAR SESIÓN</button>
 </div>
 
 <div class="container" id="chat">
@@ -60,7 +55,7 @@ button{
 
   <div class="panel">
     👤 <span id="infoUser"></span><br>
-    💰 Monedas: <span id="monedas">0</span>
+    💰 Monedas: <span id="monedas">100</span>
   </div>
 
   <div id="mensajes"></div>
@@ -73,6 +68,7 @@ button{
 
 <!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
@@ -87,91 +83,39 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.firestore();
 
-// CHAT
-let user="", tipo="", monedas=0;
+let monedas = 100;
 
-function guardar(){
-  localStorage.setItem("user",user);
-  localStorage.setItem("tipo",tipo);
-  localStorage.setItem("monedas",monedas);
+// REGISTRO
+function registrar(){
+  const email = emailEl.value;
+  const pass = passEl.value;
+  if(!email || !pass) return alert("Completa los campos");
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(()=>alert("Registrado correctamente"))
+    .catch(e=>alert(e.message));
 }
 
-function cargar(){
-  user=localStorage.getItem("user");
-  tipo=localStorage.getItem("tipo");
-  monedas=parseInt(localStorage.getItem("monedas")||"100");
-  if(user && tipo){
-    login.style.display="none";
-    chat.style.display="block";
-    infoUser.innerText=user+" ("+tipo+")";
-    monedasEl.innerText=monedas;
+// LOGIN
+function login(){
+  const email = emailEl.value;
+  const pass = passEl.value;
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(e=>alert(e.message));
+}
+
+// SESIÓN ACTIVA
+auth.onAuthStateChanged(user=>{
+  if(user){
+    loginDiv.style.display="none";
+    chatDiv.style.display="block";
+    infoUser.innerText=user.email;
   }
-}
-
-function entrar(){
-  user=usuario.value;
-  tipo=tipoEl.value;
-  if(!user) return alert("Ingresa correo o número");
-  monedas=100;
-  guardar();
-  cargar();
-}
-
-function enviar(){
-  if(!texto.value) return;
-  db.collection("mensajes").add({
-    user,
-    tipo,
-    texto:texto.value,
-    time:Date.now()
-  });
-  texto.value="";
-}
-
-db.collection("mensajes").orderBy("time")
-.onSnapshot(s=>{
-  mensajes.innerHTML="";
-  s.forEach(d=>{
-    const m=d.data();
-    const div=document.createElement("div");
-    div.className="mensaje "+m.tipo;
-    div.textContent=m.user+": "+m.texto;
-    mensajes.appendChild(div);
-  });
 });
 
-function regalo(){
-  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
-  if(monedas<10) return alert("Sin monedas");
-  monedas-=10;
-  monedasEl.innerText=monedas;
-  guardar();
-  db.collection("mensajes").add({
-    user,
-    tipo:"regalo",
-    texto:"🎁 Envió un regalo",
-    time:Date.now()
-  });
-}
-
-function salir(){
-  localStorage.clear();
-  location.reload();
-}
-
-const usuario=document.getElementById("usuario");
-const tipoEl=document.getElementById("tipo");
-const texto=document.getElementById("texto");
-const mensajes=document.getElementById("mensajes");
-const monedasEl=document.getElementById("monedas");
-const infoUser=document.getElementById("infoUser");
-const login=document.getElementById("login");
-const chat=document.getElementById("chat");
-
-cargar();
-</script>
-
-</body>
-</html>
+// CHAT
+function enviar(){
+  if(!texto.value) return;
+  db.
