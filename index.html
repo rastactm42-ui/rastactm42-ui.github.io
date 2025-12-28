@@ -2,228 +2,185 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>Citas Chat</title>
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:linear-gradient(135deg,#000,#1a0033,#000);
+  background:#0b0b0b;
   color:#fff;
 }
-
-/* BANNER MUJERES ONLINE */
-.banner-online{
-  background:linear-gradient(90deg,#ff0066,#ff00ff);
-  text-align:center;
-  padding:16px;
-  font-size:22px;
-  font-weight:bold;
-  animation:parpadeo 1.2s infinite;
-}
-@keyframes parpadeo{
-  0%{opacity:1}
-  50%{opacity:.4}
-  100%{opacity:1}
-}
-
 .container{
   max-width:420px;
   margin:30px auto;
-  background:rgba(0,0,0,.9);
+  background:#111;
   padding:20px;
-  border-radius:16px;
-  box-shadow:0 0 25px #ff00ff;
+  border-radius:14px;
+  box-shadow:0 0 20px #ff0066;
 }
-h2{text-align:center;color:#ff00ff}
+h2{text-align:center;color:#ff0066}
+
 input,select,button{
-  width:100%;padding:12px;margin:6px 0;
-  border:none;border-radius:8px;
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border:none;
+  border-radius:8px;
 }
-input,select{background:#111;color:#fff;border:1px solid #333}
+input,select{
+  background:#000;
+  color:#fff;
+  border:1px solid #333;
+}
 button{
-  background:linear-gradient(90deg,#ff00ff,#ff0066);
-  color:#fff;font-weight:bold;cursor:pointer;
+  background:#ff0066;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
 }
-#chat{display:none}
+
+#app,#chat{display:none}
+
+.perfil{
+  padding:10px;
+  border-bottom:1px solid #333;
+  cursor:pointer;
+}
+.perfil:hover{background:#222}
+
 #mensajes{
-  height:220px;overflow-y:auto;
-  background:#000;border:1px solid #333;
-  padding:10px;margin-bottom:8px;
+  height:220px;
+  overflow-y:auto;
+  border:1px solid #333;
+  padding:10px;
+  margin-bottom:8px;
 }
-.mensaje{margin-bottom:6px}
-.hombre{color:#4da6ff}
-.mujer{color:#ff66cc}
-.regalo{color:#ffd700;font-weight:bold}
+.msg{margin-bottom:6px}
+.yo{color:#4da6ff}
+.otro{color:#ff66cc}
 </style>
 </head>
 
 <body>
 
-<!-- MUJERES ONLINE -->
-<div class="banner-online">
-  💃 MUJERES ONLINE: <span id="contadorMujeres">0</span>
-</div>
-
+<!-- LOGIN -->
 <div class="container" id="login">
-  <h2>🔥 REGISTRO 🔥</h2>
-  <input id="email" placeholder="Correo electrónico">
+  <h2>💖 Citas</h2>
+  <input id="email" placeholder="Correo">
   <input id="password" type="password" placeholder="Contraseña">
-
+  <input id="nick" placeholder="Nick">
   <select id="tipo">
     <option value="">Selecciona</option>
     <option value="hombre">👨 Hombre</option>
     <option value="mujer">👩 Mujer</option>
   </select>
-
   <button onclick="registrar()">REGISTRARSE</button>
-  <button onclick="loginUser()">ENTRAR</button>
+  <button onclick="entrar()">ENTRAR</button>
 </div>
 
-<div class="container" id="chat">
-  <h2>💬 CHAT</h2>
-
-  👤 <span id="infoUser"></span><br>
-  💰 Monedas: <span id="monedas">0</span><br><br>
-
-  <div id="mensajes"></div>
-
-  <input id="texto" placeholder="Mensaje">
-  <button onclick="enviar()">ENVIAR</button>
-  <button onclick="regalo()">🎁 Enviar regalo (10)</button>
+<!-- APP -->
+<div class="container" id="app">
+  <h2>Personas</h2>
+  <div id="perfiles"></div>
   <button onclick="salir()">SALIR</button>
 </div>
 
-<!-- FIREBASE -->
+<!-- CHAT PRIVADO -->
+<div class="container" id="chat">
+  <h2 id="chatCon"></h2>
+  <div id="mensajes"></div>
+  <input id="texto" placeholder="Mensaje">
+  <button onclick="enviar()">ENVIAR</button>
+  <button onclick="volver()">VOLVER</button>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.firebasestorage.app",
-  messagingSenderId: "466107819820",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
+const firebaseConfig={
+  apiKey:"AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain:"chat-1adf8.firebaseapp.com",
+  projectId:"chat-1adf8"
 };
-
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
 
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const tipoEl = document.getElementById("tipo");
-const infoUser = document.getElementById("infoUser");
-const monedasEl = document.getElementById("monedas");
-const texto = document.getElementById("texto");
-const mensajes = document.getElementById("mensajes");
-const contadorMujeres = document.getElementById("contadorMujeres");
+const auth=firebase.auth();
+const db=firebase.firestore();
 
-let usuario=null;
-let tipo="";
-let monedas=0;
+const email=document.getElementById("email");
+const password=document.getElementById("password");
+const nickEl=document.getElementById("nick");
+const tipoEl=document.getElementById("tipo");
 
-/* CONTADOR MUJERES ONLINE */
-db.collection("usuarios").where("tipo","==","mujer")
-.onSnapshot(snap=>{
-  contadorMujeres.innerText = snap.size;
-});
+const login=document.getElementById("login");
+const app=document.getElementById("app");
+const chat=document.getElementById("chat");
+
+const perfiles=document.getElementById("perfiles");
+const mensajes=document.getElementById("mensajes");
+const texto=document.getElementById("texto");
+const chatCon=document.getElementById("chatCon");
+
+let yo=null;
+let miNick="";
+let chatId="";
+let conNick="";
 
 /* REGISTRO */
 function registrar(){
-  if(!tipoEl.value) return alert("Selecciona Hombre o Mujer");
-
-  auth.createUserWithEmailAndPassword(email.value, password.value)
-  .then(cred=>{
-    return db.collection("usuarios").doc(cred.user.uid).set({
-      email: email.value,
-      tipo: tipoEl.value,
-      monedas: tipoEl.value==="hombre" ? 100 : 0
+  if(!email.value||!password.value||!nickEl.value||!tipoEl.value)
+    return alert("Completa todo");
+  auth.createUserWithEmailAndPassword(email.value,password.value)
+  .then(c=>{
+    return db.collection("usuarios").doc(c.user.uid).set({
+      nick:nickEl.value,
+      tipo:tipoEl.value
     });
   })
-  .then(()=>alert("Usuario creado"))
-  .catch(e=>alert(e.message));
+  .then(()=>alert("Cuenta creada, entra"));
 }
 
-/* LOGIN */
-function loginUser(){
-  auth.signInWithEmailAndPassword(email.value, password.value)
-  .catch(e=>alert(e.message));
+/* ENTRAR */
+function entrar(){
+  auth.signInWithEmailAndPassword(email.value,password.value);
 }
 
-/* SESIÓN */
+/* SESION */
 auth.onAuthStateChanged(u=>{
-  if(!u) return;
-  usuario=u;
+  if(!u)return;
+  yo=u;
+  login.style.display="none";
+  app.style.display="block";
 
-  db.collection("usuarios").doc(u.uid).get().then(doc=>{
-    const d=doc.data();
-    tipo=d.tipo;
-    monedas=d.monedas;
-    infoUser.innerText=d.email+" ("+tipo+")";
-    monedasEl.innerText=monedas;
-
-    document.getElementById("login").style.display="none";
-    document.getElementById("chat").style.display="block";
+  db.collection("usuarios").doc(u.uid).get().then(d=>{
+    miNick=d.data().nick;
   });
+
+  cargarPerfiles();
 });
 
-/* CHAT */
-function enviar(){
-  if(!texto.value) return;
-  db.collection("mensajes").add({
-    user: usuario.email,
-    tipo,
-    texto: texto.value,
-    time: Date.now()
-  });
-  texto.value="";
-}
-
-db.collection("mensajes").orderBy("time")
-.onSnapshot(snap=>{
-  mensajes.innerHTML="";
-  snap.forEach(doc=>{
-    const d=document.createElement("div");
-    d.className="mensaje "+doc.data().tipo;
-    d.textContent=doc.data().user+": "+doc.data().texto;
-    mensajes.appendChild(d);
-  });
-});
-
-/* REGALO */
-function regalo(){
-  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
-  if(monedas<10) return alert("No tienes monedas");
-
-  monedas-=10;
-  monedasEl.innerText=monedas;
-  db.collection("usuarios").doc(usuario.uid).update({monedas});
-
-  db.collection("usuarios").where("tipo","==","mujer").get()
-  .then(q=>{
-    q.forEach(doc=>{
-      db.collection("usuarios").doc(doc.id)
-      .update({monedas: firebase.firestore.FieldValue.increment(10)});
+/* LISTA DE PERFILES */
+function cargarPerfiles(){
+  db.collection("usuarios").onSnapshot(s=>{
+    perfiles.innerHTML="";
+    s.forEach(d=>{
+      if(d.id===yo.uid)return;
+      const div=document.createElement("div");
+      div.className="perfil";
+      div.textContent=d.data().nick+" ("+d.data().tipo+")";
+      div.onclick=()=>abrirChat(d.id,d.data().nick);
+      perfiles.appendChild(div);
     });
   });
-
-  db.collection("mensajes").add({
-    texto:"🎁 Regalo enviado (+10 a chicas)",
-    tipo:"regalo",
-    time:Date.now()
-  });
 }
 
-/* SALIR */
-function salir(){
-  auth.signOut();
-  location.reload();
-}
-</script>
-
-</body>
-</html>
+/* CHAT */
+function abrirChat(uid,nick){
+  conNick=nick;
+  chatId=[yo.uid,uid].sort().join("_");
+  chatCon.innerText="Chat con "+nick;
+  app.style.display="none";
+  chat.style.disp
