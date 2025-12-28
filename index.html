@@ -11,8 +11,6 @@ body{
   background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
 }
-
-/* BANNER MUJERES ONLINE */
 .banner-online{
   background:linear-gradient(90deg,#ff0066,#ff00ff);
   text-align:center;
@@ -21,15 +19,38 @@ body{
   font-weight:bold;
   animation:parpadeo 1.2s infinite;
 }
-@keyframes parpadeo{
-  0%{opacity:1}
-  50%{opacity:.4}
-  100%{opacity:1}
+@keyframes parpadeo{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+
+.tabs{display:flex;justify-content:center;margin-top:10px}
+.tab{
+  padding:10px 18px;
+  cursor:pointer;
+  background:#111;
+  border:1px solid #333;
+  margin:0 4px;
+  border-radius:10px;
+  font-weight:bold;
 }
+.tab.active{background:#ff00ff}
+
+.lista{
+  max-width:420px;
+  margin:10px auto;
+  background:#000;
+  border-radius:12px;
+  padding:12px;
+  display:none;
+}
+.lista div{
+  padding:6px;
+  border-bottom:1px solid #222;
+}
+.mujer{color:#ff66cc}
+.hombre{color:#4da6ff}
 
 .container{
   max-width:420px;
-  margin:30px auto;
+  margin:20px auto;
   background:rgba(0,0,0,.9);
   padding:20px;
   border-radius:16px;
@@ -52,30 +73,34 @@ button{
   padding:10px;margin-bottom:8px;
 }
 .mensaje{margin-bottom:6px}
-.hombre{color:#4da6ff}
-.mujer{color:#ff66cc}
 .regalo{color:#ffd700;font-weight:bold}
 </style>
 </head>
 
 <body>
 
-<!-- MUJERES ONLINE -->
 <div class="banner-online">
   💃 MUJERES ONLINE: <span id="contadorMujeres">0</span>
 </div>
+
+<div class="tabs">
+  <div class="tab active" onclick="verLista('mujeres')">💃 Mujeres</div>
+  <div class="tab" onclick="verLista('hombres')">👨 Hombres</div>
+</div>
+
+<div class="lista" id="listaMujeres"></div>
+<div class="lista" id="listaHombres"></div>
 
 <div class="container" id="login">
   <h2>🔥 REGISTRO 🔥</h2>
   <input id="email" placeholder="Correo electrónico">
   <input id="password" type="password" placeholder="Contraseña">
-
+  <input id="nickRegistro" placeholder="Nick (visible)">
   <select id="tipo">
     <option value="">Selecciona</option>
     <option value="hombre">👨 Hombre</option>
     <option value="mujer">👩 Mujer</option>
   </select>
-
   <button onclick="registrar()">REGISTRARSE</button>
   <button onclick="loginUser()">ENTRAR</button>
 </div>
@@ -86,6 +111,9 @@ button{
   👤 <span id="infoUser"></span><br>
   💰 Monedas: <span id="monedas">0</span><br><br>
 
+  <input id="nuevoNick" placeholder="Nuevo nick">
+  <button onclick="cambiarNick()">CAMBIAR NICK</button><br><br>
+
   <div id="mensajes"></div>
 
   <input id="texto" placeholder="Mensaje">
@@ -94,136 +122,74 @@ button{
   <button onclick="salir()">SALIR</button>
 </div>
 
-<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.firebasestorage.app",
-  messagingSenderId: "466107819820",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
+const firebaseConfig={
+  apiKey:"AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain:"chat-1adf8.firebaseapp.com",
+  projectId:"chat-1adf8"
 };
-
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+const auth=firebase.auth();
+const db=firebase.firestore();
 
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const tipoEl = document.getElementById("tipo");
-const infoUser = document.getElementById("infoUser");
-const monedasEl = document.getElementById("monedas");
-const texto = document.getElementById("texto");
-const mensajes = document.getElementById("mensajes");
-const contadorMujeres = document.getElementById("contadorMujeres");
+const listaM=document.getElementById("listaMujeres");
+const listaH=document.getElementById("listaHombres");
+const contador=document.getElementById("contadorMujeres");
 
-let usuario=null;
-let tipo="";
-let monedas=0;
-
-/* CONTADOR MUJERES ONLINE */
-db.collection("usuarios").where("tipo","==","mujer")
-.onSnapshot(snap=>{
-  contadorMujeres.innerText = snap.size;
+db.collection("usuarios").onSnapshot(s=>{
+  listaM.innerHTML="";listaH.innerHTML="";
+  let c=0;
+  s.forEach(d=>{
+    const u=d.data();
+    const div=document.createElement("div");
+    div.textContent=u.nick;
+    if(u.tipo==="mujer"){div.className="mujer";listaM.appendChild(div);c++;}
+    else{div.className="hombre";listaH.appendChild(div);}
+  });
+  contador.innerText=c;
 });
 
-/* REGISTRO */
+function verLista(t){
+  document.querySelectorAll(".lista").forEach(l=>l.style.display="none");
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  if(t==="mujeres"){listaM.style.display="block";document.querySelectorAll(".tab")[0].classList.add("active")}
+  else{listaH.style.display="block";document.querySelectorAll(".tab")[1].classList.add("active")}
+}
+verLista("mujeres");
+
+const email=document.getElementById("email");
+const password=document.getElementById("password");
+const nickR=document.getElementById("nickRegistro");
+const tipoEl=document.getElementById("tipo");
+const infoUser=document.getElementById("infoUser");
+const monedasEl=document.getElementById("monedas");
+const texto=document.getElementById("texto");
+const mensajes=document.getElementById("mensajes");
+const nuevoNick=document.getElementById("nuevoNick");
+
+let usuario=null,tipo="",monedas=0,nick="";
+
 function registrar(){
-  if(!tipoEl.value) return alert("Selecciona Hombre o Mujer");
-
-  auth.createUserWithEmailAndPassword(email.value, password.value)
-  .then(cred=>{
-    return db.collection("usuarios").doc(cred.user.uid).set({
-      email: email.value,
-      tipo: tipoEl.value,
-      monedas: tipoEl.value==="hombre" ? 100 : 0
-    });
-  })
-  .then(()=>alert("Usuario creado"))
-  .catch(e=>alert(e.message));
+  if(!tipoEl.value||!nickR.value)return alert("Completa todo");
+  auth.createUserWithEmailAndPassword(email.value,password.value)
+  .then(c=>db.collection("usuarios").doc(c.user.uid).set({
+    email:email.value,
+    nick:nickR.value,
+    tipo:tipoEl.value,
+    monedas:tipoEl.value==="hombre"?100:0
+  }));
 }
-
-/* LOGIN */
 function loginUser(){
-  auth.signInWithEmailAndPassword(email.value, password.value)
-  .catch(e=>alert(e.message));
+  auth.signInWithEmailAndPassword(email.value,password.value);
 }
-
-/* SESIÓN */
 auth.onAuthStateChanged(u=>{
-  if(!u) return;
+  if(!u)return;
   usuario=u;
-
   db.collection("usuarios").doc(u.uid).get().then(doc=>{
     const d=doc.data();
-    tipo=d.tipo;
-    monedas=d.monedas;
-    infoUser.innerText=d.email+" ("+tipo+")";
-    monedasEl.innerText=monedas;
-
-    document.getElementById("login").style.display="none";
-    document.getElementById("chat").style.display="block";
-  });
-});
-
-/* CHAT */
-function enviar(){
-  if(!texto.value) return;
-  db.collection("mensajes").add({
-    user: usuario.email,
-    tipo,
-    texto: texto.value,
-    time: Date.now()
-  });
-  texto.value="";
-}
-
-db.collection("mensajes").orderBy("time")
-.onSnapshot(snap=>{
-  mensajes.innerHTML="";
-  snap.forEach(doc=>{
-    const d=document.createElement("div");
-    d.className="mensaje "+doc.data().tipo;
-    d.textContent=doc.data().user+": "+doc.data().texto;
-    mensajes.appendChild(d);
-  });
-});
-
-/* REGALO */
-function regalo(){
-  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
-  if(monedas<10) return alert("No tienes monedas");
-
-  monedas-=10;
-  monedasEl.innerText=monedas;
-  db.collection("usuarios").doc(usuario.uid).update({monedas});
-
-  db.collection("usuarios").where("tipo","==","mujer").get()
-  .then(q=>{
-    q.forEach(doc=>{
-      db.collection("usuarios").doc(doc.id)
-      .update({monedas: firebase.firestore.FieldValue.increment(10)});
-    });
-  });
-
-  db.collection("mensajes").add({
-    texto:"🎁 Regalo enviado (+10 a chicas)",
-    tipo:"regalo",
-    time:Date.now()
-  });
-}
-
-/* SALIR */
-function salir(){
-  auth.signOut();
-  location.reload();
-}
-</script>
-
-</body>
-</html>
+    tipo=d.tipo;monedas=d.monedas;nick=d.nick;
+    infoUser.innerText=nick+" ("+tipo+")";
