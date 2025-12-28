@@ -6,81 +6,48 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial;
   background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
 }
 .container{
   max-width:400px;
-  margin:60px auto;
-  background:rgba(0,0,0,0.85);
+  margin:50px auto;
+  background:rgba(0,0,0,.9);
   padding:20px;
   border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
-  animation: pop 0.6s ease-out;
+  animation:pop .5s;
 }
-@keyframes pop{
-  from{ transform:scale(0.9); opacity:0 }
-  to{ transform:scale(1); opacity:1 }
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1}}
+h2{text-align:center;color:#ff00ff;text-shadow:0 0 10px}
+input,select,button{
+  width:100%;padding:12px;margin:6px 0;
+  border:none;border-radius:8px;
 }
-h2{
-  text-align:center;
-  color:#ff00ff;
-  text-shadow:0 0 12px #ff00ff;
-}
-input, select, button{
-  width:100%;
-  padding:12px;
-  margin:6px 0;
-  border:none;
-  border-radius:8px;
-}
-input, select{
-  background:#111; color:#fff; border:1px solid #333;
-}
+input,select{background:#111;color:#fff;border:1px solid #333}
 button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
-  color:#fff; font-weight:bold; cursor:pointer;
+  color:#fff;font-weight:bold;cursor:pointer;
   box-shadow:0 0 12px #ff00ff;
-  animation: pulse 2s infinite;
 }
-@keyframes pulse{
-  0%{ box-shadow:0 0 8px #ff00ff }
-  50%{ box-shadow:0 0 18px #ff66ff }
-  100%{ box-shadow:0 0 8px #ff00ff }
-}
-#chat{ display:none; }
+#chat{display:none}
 #mensajes{
-  height:220px; overflow-y:auto;
-  border:1px solid #333; padding:10px;
-  background:#000; margin-bottom:8px;
+  height:220px;overflow-y:auto;
+  background:#000;border:1px solid #333;
+  padding:10px;margin-bottom:8px;
 }
-.mensaje{
-  margin-bottom:6px;
-  animation: slide 0.3s ease-out;
-}
-@keyframes slide{
-  from{ transform:translateX(-10px); opacity:0 }
-  to{ transform:translateX(0); opacity:1 }
-}
-.hombre{ color:#4da6ff }
-.chica{ color:#ff66cc }
-.regalo{
-  color:#ffd700; font-weight:bold;
-  animation: glow 1s infinite alternate;
-}
-@keyframes glow{
-  from{ text-shadow:0 0 5px #ffd700 }
-  to{ text-shadow:0 0 15px #fff2a8 }
-}
-.panel{ font-size:14px; margin-bottom:6px }
-footer{ text-align:center; font-size:12px; color:#777 }
+.mensaje{margin-bottom:6px}
+.hombre{color:#4da6ff}
+.chica{color:#ff66cc}
+.regalo{color:#ffd700;font-weight:bold}
+.panel{font-size:14px;margin-bottom:6px}
 </style>
 </head>
 <body>
 
 <div class="container" id="login">
-  <h2>🔥 CHAT NOCTURNO 🔥</h2>
+  <h2>🔥 CHAT 🔥</h2>
   <input id="usuario" placeholder="Correo o número">
   <select id="tipo">
     <option value="hombre">👨 Hombre</option>
@@ -90,53 +57,54 @@ footer{ text-align:center; font-size:12px; color:#777 }
 </div>
 
 <div class="container" id="chat">
-  <h2>💬 CHAT EN VIVO</h2>
+  <h2>💬 CHAT</h2>
 
   <div class="panel">
-    💰 Monedas: <span id="monedas">100</span>
+    👤 <span id="infoUser"></span><br>
+    💰 Monedas: <span id="monedas">0</span>
   </div>
 
   <div id="mensajes"></div>
 
   <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
-  <button onclick="enviarRegalo()">🎁 Enviar regalo (10)</button>
+  <button onclick="regalo()">🎁 Enviar regalo (10)</button>
 
-  <footer>Demo · Efectos activados</footer>
+  <button onclick="salir()">🚪 Salir</button>
 </div>
 
 <script>
-let user="", tipo="", monedas=100;
+let user="", tipo="", monedas=0;
+
+function guardar(){
+  localStorage.setItem("user",user);
+  localStorage.setItem("tipo",tipo);
+  localStorage.setItem("monedas",monedas);
+}
+
+function cargar(){
+  user=localStorage.getItem("user");
+  tipo=localStorage.getItem("tipo");
+  monedas=parseInt(localStorage.getItem("monedas")||"100");
+
+  if(user && tipo){
+    document.getElementById("login").style.display="none";
+    document.getElementById("chat").style.display="block";
+    document.getElementById("infoUser").innerText=user+" ("+tipo+")";
+    document.getElementById("monedas").innerText=monedas;
+  }
+}
 
 function entrar(){
   user=document.getElementById("usuario").value;
   tipo=document.getElementById("tipo").value;
   if(!user) return alert("Ingresa correo o número");
-  document.getElementById("login").style.display="none";
-  document.getElementById("chat").style.display="block";
+  monedas=100;
+  guardar();
+  cargar();
 }
 
 function enviar(){
-  const txt=document.getElementById("texto").value;
-  if(!txt) return;
-  const div=document.createElement("div");
-  div.className="mensaje "+tipo;
-  div.textContent=user+" ("+tipo+"): "+txt;
-  document.getElementById("mensajes").appendChild(div);
-  document.getElementById("texto").value="";
-}
-
-function enviarRegalo(){
-  if(tipo!=="hombre") return alert("Solo hombres envían regalos");
-  if(monedas<10) return alert("No tienes monedas");
-  monedas-=10;
-  document.getElementById("monedas").innerText=monedas;
-  const div=document.createElement("div");
-  div.className="mensaje regalo";
-  div.textContent="🎁 "+user+" envió un regalo";
-  document.getElementById("mensajes").appendChild(div);
-}
-</script>
-
-</body>
-</html>
+  const t=document.getElementById("texto").value;
+  if(!t) return;
+  const d=docu
