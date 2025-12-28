@@ -8,262 +8,190 @@
 <style>
 *{box-sizing:border-box}
 body{
- margin:0;
- font-family:Arial,Helvetica,sans-serif;
- background:linear-gradient(135deg,#7b1fa2,#9c27b0,#6a1b9a);
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f2f2f2;
+  height:100vh;
 }
 .app{
- max-width:430px;
- margin:auto;
- min-height:100vh;
- background:#fff;
- display:flex;
- flex-direction:column;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
 }
 header{
- background:#8e24aa;
- color:#fff;
- padding:14px;
- text-align:center;
- font-size:20px;
- font-weight:bold;
+  background:#ff4d6d;
+  color:#fff;
+  padding:12px;
+  text-align:center;
+  font-weight:bold;
 }
-.screen{flex:1;overflow:auto}
-.hidden{display:none}
-.center{
- display:flex;
- flex-direction:column;
- justify-content:center;
- align-items:center;
- padding:30px;
+main{
+  flex:1;
+  overflow:auto;
+  padding:10px;
 }
-button{
- width:100%;
- padding:14px;
- margin-top:10px;
- border:none;
- border-radius:30px;
- background:#8e24aa;
- color:#fff;
- font-size:16px;
- font-weight:bold;
+nav{
+  display:flex;
+  background:#fff;
+  border-top:1px solid #ccc;
 }
-input,select{
- width:100%;
- padding:12px;
- margin-top:10px;
- border-radius:10px;
- border:1px solid #ccc;
+nav button{
+  flex:1;
+  padding:10px;
+  border:none;
+  background:none;
+  font-size:14px;
 }
-
-/* HOME */
-.info{
- display:flex;
- justify-content:space-between;
- padding:10px;
- background:#f3e5f5;
-}
-.grid{
- display:grid;
- grid-template-columns:repeat(2,1fr);
- gap:12px;
- padding:12px;
+nav button.active{
+  color:#ff4d6d;
+  font-weight:bold;
 }
 .card{
- background:#fafafa;
- border-radius:16px;
- padding:10px;
- text-align:center;
- box-shadow:0 2px 8px rgba(0,0,0,.1);
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
 }
-.card img{
- width:100%;
- aspect-ratio:1/1;
- object-fit:cover;
- border-radius:50%;
+.user{
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
-
-/* CHAT */
-.chat-box{
- flex:1;
- padding:10px;
- overflow:auto;
- background:#f9f9f9;
+.user img{
+  width:60px;
+  height:60px;
+  border-radius:50%;
+}
+input,select,button{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+}
+button{
+  background:#ff4d6d;
+  color:#fff;
+  border:none;
+  border-radius:8px;
 }
 .msg{
- max-width:75%;
- margin:6px 0;
- padding:10px;
- border-radius:12px;
- font-size:14px;
+  margin:6px 0;
 }
-.me{background:#8e24aa;color:#fff;margin-left:auto}
-.other{background:#e0e0e0}
-.input-bar{
- display:flex;
- gap:8px;
- padding:10px;
-}
-.input-bar input{
- flex:1;
- border-radius:20px;
-}
-.input-bar button{
- width:auto;
- padding:10px 18px;
- border-radius:20px;
+.chat-box{
+  height:55vh;
+  overflow-y:auto;
+  border:1px solid #ddd;
+  padding:8px;
+  background:#fff;
 }
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
- getAuth,GoogleAuthProvider,signInWithPopup,
- onAuthStateChanged,signOut
+  getAuth, GoogleAuthProvider,
+  signInWithPopup, onAuthStateChanged, signOut, updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
- getFirestore,doc,getDoc,setDoc,updateDoc,
- collection,addDoc,onSnapshot,query,orderBy,
- serverTimestamp,increment
+  getFirestore, doc, setDoc, getDoc,
+  collection, addDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* FIREBASE */
-const firebaseConfig={
- apiKey:"AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
- authDomain:"chat-1adf8.firebaseapp.com",
- projectId:"chat-1adf8",
- storageBucket:"chat-1adf8.firebasestorage.app",
- messagingSenderId:"466107819820",
- appId:"1:466107819820:web:e297a7c513db3d96696e89"
+const firebaseConfig = {
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  storageBucket: "chat-1adf8.appspot.com",
+  messagingSenderId: "466107819820",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
 
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-const provider=new GoogleAuthProvider();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
+let user=null;
 let userData=null;
-let chatId=null;
 
-/* LOGIN */
-window.login=()=>signInWithPopup(auth,provider);
+window.login = async()=>{
+  await signInWithPopup(auth,provider);
+};
 
-/* AUTH */
-onAuthStateChanged(auth,async(user)=>{
- if(!user) return;
- const ref=doc(db,"usuarios",user.uid);
- const snap=await getDoc(ref);
- if(!snap.exists()){
-  perfil.classList.remove("hidden");
- }else{
-  userData=snap.data();
-  iniciar();
- }
+onAuthStateChanged(auth, async u=>{
+  if(!u) return;
+  user=u;
+  const ref=doc(db,"usuarios",u.uid);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref,{
+      nick:u.displayName,
+      foto:u.photoURL,
+      edad:"",
+      ciudad:"",
+      genero:"",
+      monedas:100,
+      created:serverTimestamp()
+    });
+  }
+  userData=(await getDoc(ref)).data();
+  cargarPerfil();
+  escucharChat();
+  mostrar("perfil");
 });
 
-/* PERFIL */
+function mostrar(id){
+  document.querySelectorAll("section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("btn-"+id).classList.add("active");
+}
+
 window.guardarPerfil=async()=>{
- const genero=generoSel.value;
- if(!genero) return alert("Selecciona género");
- await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
-  uid:auth.currentUser.uid,
-  nick:auth.currentUser.displayName,
-  foto:auth.currentUser.photoURL,
-  genero,
-  monedas: genero==="hombre"?500:0,
-  ganancias:0
- });
- location.reload();
+  const ref=doc(db,"usuarios",user.uid);
+  await setDoc(ref,{
+    ...userData,
+    nick:nick.value,
+    edad:edad.value,
+    ciudad:ciudad.value,
+    genero:genero.value
+  });
+  await updateProfile(user,{displayName:nick.value});
+  alert("Datos guardados");
 };
 
-/* INICIAR */
-function iniciar(){
- loginBox.classList.add("hidden");
- perfil.classList.add("hidden");
- home.classList.remove("hidden");
- nick.innerText=userData.nick;
- monedas.innerText=userData.monedas;
- cargarUsuarios();
+function cargarPerfil(){
+  foto.src=userData.foto;
+  nick.value=userData.nick||"";
+  edad.value=userData.edad||"";
+  ciudad.value=userData.ciudad||"";
+  genero.value=userData.genero||"";
 }
 
-/* USUARIOS */
-function cargarUsuarios(){
- onSnapshot(collection(db,"usuarios"),s=>{
-  grid.innerHTML="";
-  s.forEach(d=>{
-   if(d.id===auth.currentUser.uid) return;
-   const u=d.data();
-   const card=document.createElement("div");
-   card.className="card";
-   card.innerHTML=`
-    <img src="${u.foto}">
-    <h4>${u.nick}</h4>
-   `;
-   card.onclick=()=>abrirPrivado(u);
-   grid.appendChild(card);
+window.enviar=async()=>{
+  if(!texto.value) return;
+  await addDoc(collection(db,"chatGeneral"),{
+    user:user.displayName,
+    texto:texto.value,
+    time:serverTimestamp()
   });
- });
-}
-
-/* ABRIR CHAT PRIVADO */
-function abrirPrivado(u){
- chatId=[auth.currentUser.uid,u.uid].sort().join("_");
- home.classList.add("hidden");
- privado.classList.remove("hidden");
- privadoNick.innerText=u.nick;
- escucharMensajes();
-}
-
-/* ESCUCHAR MENSAJES */
-function escucharMensajes(){
- const q=query(
-  collection(db,"chats",chatId,"mensajes"),
-  orderBy("time")
- );
- onSnapshot(q,s=>{
-  chatBox.innerHTML="";
-  s.forEach(d=>{
-   const m=d.data();
-   const div=document.createElement("div");
-   div.className="msg "+(m.de===auth.currentUser.uid?"me":"other");
-   div.innerText=m.texto;
-   chatBox.appendChild(div);
-  });
-  chatBox.scrollTop=chatBox.scrollHeight;
- });
-}
-
-/* ENVIAR */
-window.enviarPrivado=async()=>{
- if(!msgPriv.value) return;
-
- if(userData.genero==="hombre"){
-  if(userData.monedas<20) return alert("No tienes monedas");
-  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-   monedas:increment(-20)
-  });
-  userData.monedas-=20;
-  monedas.innerText=userData.monedas;
- }
-
- await addDoc(collection(db,"chats",chatId,"mensajes"),{
-  de:auth.currentUser.uid,
-  texto:msgPriv.value,
-  time:serverTimestamp()
- });
- msgPriv.value="";
+  texto.value="";
 };
 
-/* VOLVER */
-window.volver=()=>{
- privado.classList.add("hidden");
- home.classList.remove("hidden");
-};
+function escucharChat(){
+  onSnapshot(collection(db,"chatGeneral"),snap=>{
+    mensajes.innerHTML="";
+    snap.forEach(d=>{
+      const m=document.createElement("div");
+      m.className="msg";
+      m.textContent=d.data().user+": "+d.data().texto;
+      mensajes.appendChild(m);
+    });
+  });
+}
 
-/* SALIR */
 window.salir=async()=>{
- await signOut(auth);
- location.reload();
+  await signOut(auth);
+  location.reload();
 };
 </script>
 </head>
@@ -271,41 +199,57 @@ window.salir=async()=>{
 <body>
 
 <div class="app">
+
 <header>CHAT</header>
 
-<div id="loginBox" class="screen center">
-<button onclick="login()">Entrar con Google</button>
+<main>
+
+<section id="login">
+  <button onclick="login()">Entrar con Google</button>
+</section>
+
+<section id="perfil" style="display:none">
+  <div class="card user">
+    <img id="foto">
+    <div>
+      <input id="nick" placeholder="Nick">
+      <input id="edad" placeholder="Edad">
+      <input id="ciudad" placeholder="Ciudad">
+      <select id="genero">
+        <option value="">Género</option>
+        <option value="hombre">Hombre</option>
+        <option value="mujer">Mujer</option>
+      </select>
+      <button onclick="guardarPerfil()">Guardar</button>
+      <button onclick="salir()">Salir</button>
+    </div>
+  </div>
+</section>
+
+<section id="general" style="display:none">
+  <div class="chat-box" id="mensajes"></div>
+  <input id="texto" placeholder="Mensaje">
+  <button onclick="enviar()">Enviar</button>
+</section>
+
+<section id="usuarios" style="display:none">
+  <div class="card">Próximo paso: lista de usuarios activos</div>
+</section>
+
+<section id="config" style="display:none">
+  <div class="card">Configuración</div>
+</section>
+
+</main>
+
+<nav>
+  <button id="btn-perfil" onclick="mostrar('perfil')">👤</button>
+  <button id="btn-general" onclick="mostrar('general')">💬</button>
+  <button id="btn-usuarios" onclick="mostrar('usuarios')">👥</button>
+  <button id="btn-config" onclick="mostrar('config')">⚙️</button>
+</nav>
+
 </div>
 
-<div id="perfil" class="screen center hidden">
-<h3>Completa tu perfil</h3>
-<select id="generoSel">
-<option value="">Selecciona género</option>
-<option value="hombre">Hombre</option>
-<option value="mujer">Mujer</option>
-</select>
-<button onclick="guardarPerfil()">Continuar</button>
-</div>
-
-<div id="home" class="screen hidden">
-<div class="info">
-<span id="nick"></span>
-<span>💰 <span id="monedas"></span></span>
-</div>
-<div id="grid" class="grid"></div>
-<button onclick="salir()">Salir</button>
-</div>
-
-<div id="privado" class="screen hidden">
-<header>Chat con <span id="privadoNick"></span></header>
-<div id="chatBox" class="chat-box"></div>
-<div class="input-bar">
-<input id="msgPriv" placeholder="Mensaje (👨 paga 20)">
-<button onclick="enviarPrivado()">Enviar</button>
-</div>
-<button onclick="volver()">Volver</button>
-</div>
-
-</div>
 </body>
 </html>
