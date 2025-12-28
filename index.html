@@ -2,79 +2,85 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CHAT</title>
+<title>Chat</title>
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:#0b0b0b;
+  background:#0b0014;
   color:#fff;
 }
 .container{
   max-width:420px;
   margin:30px auto;
-  background:#111;
+  background:#12001f;
   padding:20px;
   border-radius:14px;
-  box-shadow:0 0 20px #ff0066;
+  box-shadow:0 0 20px #ff00ff;
 }
-h2{text-align:center;color:#ff0066}
-
-input,select,button{
+h2,h3{text-align:center;color:#ff4dd2}
+button,input,select{
   width:100%;
   padding:12px;
   margin:6px 0;
-  border:none;
   border-radius:8px;
+  border:none;
+}
+button{
+  background:linear-gradient(90deg,#ff00ff,#ff0066);
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
 }
 input,select{
   background:#000;
   color:#fff;
   border:1px solid #333;
 }
-button{
-  background:#ff0066;
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
+#app,#perfil{display:none}
+.flex{display:flex;gap:6px}
+.box{
+  flex:1;
+  background:#000;
+  padding:8px;
+  border-radius:8px;
+  height:120px;
+  overflow:auto;
+  font-size:13px;
 }
-
-#app,#chat,#perfil{display:none}
-
-.perfil{
-  padding:10px;
-  border-bottom:1px solid #333;
-  cursor:pointer;
-}
-.perfil:hover{background:#222}
-
 #mensajes{
-  height:220px;
-  overflow-y:auto;
-  border:1px solid #333;
-  padding:10px;
-  margin-bottom:8px;
+  height:180px;
+  background:#000;
+  overflow:auto;
+  padding:8px;
+  border-radius:8px;
 }
-.msg{margin-bottom:6px}
-.yo{color:#4da6ff}
-.otro{color:#ff66cc}
+.msg{margin-bottom:5px}
+.hombre{color:#4da6ff}
+.mujer{color:#ff66cc}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
 <div class="container" id="login">
-  <h2>💬 CHAT</h2>
+  <h2>🔥 CHAT 🔥</h2>
   <button onclick="loginGoogle()">🔵 Entrar con Google</button>
-  <button onclick="loginFacebook()">🔷 Entrar con Facebook</button>
+
+  <hr style="border:1px solid #333">
+
+  <input id="telefono" placeholder="+51 999999999">
+  <div id="recaptcha"></div>
+  <button onclick="loginTelefono()">📱 Entrar con Teléfono</button>
+
+  <input id="codigo" placeholder="Código SMS">
+  <button onclick="verificarCodigo()">✔ Verificar</button>
 </div>
 
-<!-- PERFIL -->
 <div class="container" id="perfil">
-  <h2>Tu perfil</h2>
-  <input id="nick" placeholder="Elige tu nick">
+  <h2>Completa tu perfil</h2>
+  <input id="nick" placeholder="Tu nick">
   <select id="tipo">
     <option value="">Selecciona</option>
     <option value="hombre">👨 Hombre</option>
@@ -83,20 +89,26 @@ button{
   <button onclick="guardarPerfil()">GUARDAR</button>
 </div>
 
-<!-- APP -->
 <div class="container" id="app">
-  <h2>Usuarios en CHAT</h2>
-  <div id="perfiles"></div>
-  <button onclick="salir()">SALIR</button>
-</div>
+  <h3 id="info"></h3>
 
-<!-- CHAT PRIVADO -->
-<div class="container" id="chat">
-  <h2 id="chatCon"></h2>
+  <div class="flex">
+    <div class="box">
+      <b>👨 Hombres</b>
+      <div id="hombres"></div>
+    </div>
+    <div class="box">
+      <b>👩 Mujeres</b>
+      <div id="mujeres"></div>
+    </div>
+  </div>
+
+  <br>
+
   <div id="mensajes"></div>
-  <input id="texto" placeholder="Mensaje">
+  <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
-  <button onclick="volver()">VOLVER</button>
+  <button onclick="salir()">SALIR</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -104,138 +116,99 @@ button{
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-const firebaseConfig={
-  apiKey:"AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain:"chat-1adf8.firebaseapp.com",
-  projectId:"chat-1adf8"
+const firebaseConfig = {
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
-firebase.initializeApp(firebaseConfig);
 
+firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-const login=document.getElementById("login");
-const perfil=document.getElementById("perfil");
-const app=document.getElementById("app");
-const chat=document.getElementById("chat");
-
-const perfiles=document.getElementById("perfiles");
-const mensajes=document.getElementById("mensajes");
-const texto=document.getElementById("texto");
-const chatCon=document.getElementById("chatCon");
-
-const nickEl=document.getElementById("nick");
-const tipoEl=document.getElementById("tipo");
-
-let yo=null;
-let miNick="";
-let chatId="";
+let confirmacion=null, usuario=null;
 
 /* GOOGLE */
 function loginGoogle(){
-  const provider=new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 }
 
-/* FACEBOOK */
-function loginFacebook(){
-  const provider=new firebase.auth.FacebookAuthProvider();
-  auth.signInWithPopup(provider);
+/* TELEFONO */
+window.onload=()=>{
+  window.recaptcha=new firebase.auth.RecaptchaVerifier('recaptcha',{size:'invisible'});
+}
+function loginTelefono(){
+  auth.signInWithPhoneNumber(
+    document.getElementById("telefono").value,
+    window.recaptcha
+  ).then(r=>{
+    confirmacion=r;
+    alert("Código enviado");
+  });
+}
+function verificarCodigo(){
+  confirmacion.confirm(document.getElementById("codigo").value);
 }
 
-/* SESIÓN */
+/* SESION */
 auth.onAuthStateChanged(u=>{
-  if(!u)return;
-  yo=u;
-  login.style.display="none";
-
-  db.collection("usuarios").doc(u.uid).get().then(doc=>{
-    if(!doc.exists){
+  if(!u) return;
+  usuario=u;
+  db.collection("usuarios").doc(u.uid).get().then(d=>{
+    if(!d.exists){
+      login.style.display="none";
       perfil.style.display="block";
     }else{
-      miNick=doc.data().nick;
-      app.style.display="block";
-      cargarPerfiles();
+      iniciarApp(d.data());
     }
   });
 });
 
-/* GUARDAR PERFIL */
+/* PERFIL */
 function guardarPerfil(){
-  if(!nickEl.value||!tipoEl.value)
-    return alert("Completa tu perfil");
-
-  db.collection("usuarios").doc(yo.uid).set({
-    nick:nickEl.value,
-    tipo:tipoEl.value
+  db.collection("usuarios").doc(usuario.uid).set({
+    nick:nick.value,
+    tipo:tipo.value,
+    online:true
   }).then(()=>{
-    miNick=nickEl.value;
-    perfil.style.display="none";
-    app.style.display="block";
-    cargarPerfiles();
+    iniciarApp({nick:nick.value,tipo:tipo.value});
   });
 }
 
-/* LISTA DE USUARIOS */
-function cargarPerfiles(){
-  db.collection("usuarios").onSnapshot(s=>{
-    perfiles.innerHTML="";
-    s.forEach(d=>{
-      if(d.id===yo.uid)return;
-      const div=document.createElement("div");
-      div.className="perfil";
-      div.textContent=d.data().nick+" ("+d.data().tipo+")";
-      div.onclick=()=>abrirChat(d.id,d.data().nick);
-      perfiles.appendChild(div);
-    });
-  });
+function iniciarApp(d){
+  perfil.style.display="none";
+  login.style.display="none";
+  app.style.display="block";
+  info.innerText=d.nick+" ("+d.tipo+")";
 }
+
+/* LISTAS */
+db.collection("usuarios").onSnapshot(s=>{
+  hombres.innerHTML="";
+  mujeres.innerHTML="";
+  s.forEach(doc=>{
+    let u=doc.data();
+    if(u.online){
+      let div=document.createElement("div");
+      div.innerText=u.nick;
+      if(u.tipo=="hombre") hombres.appendChild(div);
+      if(u.tipo=="mujer") mujeres.appendChild(div);
+    }
+  });
+});
 
 /* CHAT */
-function abrirChat(uid,nick){
-  chatId=[yo.uid,uid].sort().join("_");
-  chatCon.innerText="Chat con "+nick;
-  app.style.display="none";
-  chat.style.display="block";
-
-  db.collection("chats").doc(chatId)
-  .collection("mensajes")
-  .orderBy("time")
-  .onSnapshot(s=>{
-    mensajes.innerHTML="";
-    s.forEach(m=>{
-      const d=m.data();
-      const div=document.createElement("div");
-      div.className="msg "+(d.user===miNick?"yo":"otro");
-      div.textContent=d.user+": "+d.texto;
-      mensajes.appendChild(div);
-    });
-  });
-}
-
 function enviar(){
-  if(!texto.value)return;
-  db.collection("chats").doc(chatId)
-  .collection("mensajes")
-  .add({
-    user:miNick,
+  db.collection("mensajes").add({
+    nick:info.innerText,
     texto:texto.value,
     time:Date.now()
   });
   texto.value="";
 }
 
-function volver(){
-  chat.style.display="none";
-  app.style.display="block";
-}
-
-function salir(){
-  auth.signOut();
-  location.reload();
-}
-</script>
-
-</body>
-</html>
-
+db.collection("mensajes").orderBy("time")
+.onSnapshot(s=>{
+  mensajes.innerHTML="";
+  s.forEac
