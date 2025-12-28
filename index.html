@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CHAT</title>
+<title>Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -10,8 +10,7 @@
 body{
   margin:0;
   font-family:Arial, sans-serif;
-  background:#f2f2f2;
-  height:100vh;
+  background:#000;
 }
 .app{
   height:100vh;
@@ -19,297 +18,144 @@ body{
   flex-direction:column;
 }
 header{
-  background:#ff4d6d;
-  color:#fff;
-  padding:12px;
-  text-align:center;
-  font-weight:bold;
-}
-main{
-  flex:1;
-  overflow:auto;
-  padding:10px;
-}
-nav{
+  height:60px;
   display:flex;
+  align-items:center;
+  justify-content:center;
   background:#fff;
-  border-top:1px solid #ccc;
-}
-nav button{
-  flex:1;
-  padding:10px;
-  border:none;
-  background:none;
-  font-size:14px;
-}
-nav button.active{
-  color:#ff4d6d;
+  font-size:22px;
   font-weight:bold;
+  color:#ff4458;
+}
+.card-container{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f5f5f5;
 }
 .card{
+  width:90%;
+  max-width:380px;
+  height:75%;
   background:#fff;
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:10px;
-}
-.user{
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 10px 25px rgba(0,0,0,.3);
   display:flex;
-  align-items:center;
-  gap:10px;
+  flex-direction:column;
 }
-.user img{
-  width:60px;
-  height:60px;
-  border-radius:50%;
-}
-input,select,button{
+.card img{
   width:100%;
-  padding:10px;
-  margin-top:6px;
+  height:70%;
+  object-fit:cover;
 }
-button{
-  background:#ff4d6d;
-  color:#fff;
-  border:none;
-  border-radius:8px;
+.card-info{
+  padding:15px;
 }
-.msg{margin:6px 0}
-.chat-box{
-  height:55vh;
-  overflow-y:auto;
-  border:1px solid #ddd;
-  padding:8px;
+.card-info h2{
+  margin:0;
+}
+.card-info p{
+  margin:5px 0;
+  color:#555;
+}
+.actions{
+  height:90px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:40px;
   background:#fff;
 }
-.lista-usuario{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:8px;
-  border-bottom:1px solid #eee;
+.actions button{
+  width:65px;
+  height:65px;
+  border-radius:50%;
+  border:none;
+  font-size:28px;
   cursor:pointer;
 }
-.lista-usuario img{
-  width:50px;
-  height:50px;
-  border-radius:50%;
+.nope{
+  background:#fff;
+  border:2px solid #ff4458;
+  color:#ff4458;
+}
+.like{
+  background:#fff;
+  border:2px solid #2ecc71;
+  color:#2ecc71;
 }
 </style>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getAuth, GoogleAuthProvider,
-  signInWithPopup, onAuthStateChanged, signOut, updateProfile
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getFirestore, doc, setDoc, getDoc,
-  collection, addDoc, onSnapshot, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain: "chat-1adf8.firebaseapp.com",
-  projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.appspot.com",
-  messagingSenderId: "466107819820",
-  appId: "1:466107819820:web:e297a7c513db3d96696e89"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
-
-let user=null;
-let userData=null;
-let usuarioSeleccionado=null;
-
-window.login = async()=>{
-  await signInWithPopup(auth,provider);
-};
-
-onAuthStateChanged(auth, async u=>{
-  if(!u) return;
-  user=u;
-  const ref=doc(db,"usuarios",u.uid);
-  const snap=await getDoc(ref);
-  if(!snap.exists()){
-    await setDoc(ref,{
-      nick:u.displayName,
-      foto:u.photoURL,
-      edad:"",
-      ciudad:"",
-      genero:"",
-      monedas:100,
-      created:serverTimestamp()
-    });
-  }
-  userData=(await getDoc(ref)).data();
-  cargarPerfil();
-  escucharChat();
-  cargarUsuarios();
-  mostrar("perfil");
-});
-
-function mostrar(id){
-  document.querySelectorAll("section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
-  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
-  document.getElementById("btn-"+id).classList.add("active");
-}
-
-window.guardarPerfil=async()=>{
-  const ref=doc(db,"usuarios",user.uid);
-  await setDoc(ref,{
-    ...userData,
-    nick:nick.value,
-    edad:edad.value,
-    ciudad:ciudad.value,
-    genero:genero.value
-  });
-  await updateProfile(user,{displayName:nick.value});
-  alert("Datos guardados");
-};
-
-function cargarPerfil(){
-  foto.src=userData.foto;
-  nick.value=userData.nick||"";
-  edad.value=userData.edad||"";
-  ciudad.value=userData.ciudad||"";
-  genero.value=userData.genero||"";
-}
-
-window.enviar=async()=>{
-  if(!texto.value) return;
-  await addDoc(collection(db,"chatGeneral"),{
-    user:user.displayName,
-    texto:texto.value,
-    time:serverTimestamp()
-  });
-  texto.value="";
-};
-
-function escucharChat(){
-  onSnapshot(collection(db,"chatGeneral"),snap=>{
-    mensajes.innerHTML="";
-    snap.forEach(d=>{
-      const m=document.createElement("div");
-      m.className="msg";
-      m.textContent=d.data().user+": "+d.data().texto;
-      mensajes.appendChild(m);
-    });
-  });
-}
-
-function cargarUsuarios(){
-  onSnapshot(collection(db,"usuarios"),snap=>{
-    listaUsuarios.innerHTML="";
-    snap.forEach(d=>{
-      if(d.id===user.uid) return;
-      const u=d.data();
-      const div=document.createElement("div");
-      div.className="lista-usuario";
-      div.innerHTML=`
-        <img src="${u.foto}">
-        <div>
-          <b>${u.nick}</b><br>
-          <small>${u.ciudad||""}</small>
-        </div>
-      `;
-      div.onclick=()=>{
-        usuarioSeleccionado=u;
-        verUsuario();
-      };
-      listaUsuarios.appendChild(div);
-    });
-  });
-}
-
-function verUsuario(){
-  mostrar("perfilPublico");
-  pubFoto.src=usuarioSeleccionado.foto;
-  pubNick.innerText=usuarioSeleccionado.nick;
-  pubEdad.innerText=usuarioSeleccionado.edad||"";
-  pubCiudad.innerText=usuarioSeleccionado.ciudad||"";
-}
-
-window.salir=async()=>{
-  await signOut(auth);
-  location.reload();
-};
-</script>
 </head>
 
 <body>
 
 <div class="app">
 
-<header>CHAT</header>
+<header>Chat</header>
 
-<main>
-
-<section id="login">
-  <button onclick="login()">Entrar con Google</button>
-</section>
-
-<section id="perfil" style="display:none">
-  <div class="card user">
-    <img id="foto">
-    <div>
-      <input id="nick" placeholder="Nick">
-      <input id="edad" placeholder="Edad">
-      <input id="ciudad" placeholder="Ciudad">
-      <select id="genero">
-        <option value="">Género</option>
-        <option value="hombre">Hombre</option>
-        <option value="mujer">Mujer</option>
-      </select>
-      <button onclick="guardarPerfil()">Guardar</button>
-      <button onclick="salir()">Salir</button>
-    </div>
-  </div>
-</section>
-
-<section id="general" style="display:none">
-  <div class="chat-box" id="mensajes"></div>
-  <input id="texto" placeholder="Mensaje">
-  <button onclick="enviar()">Enviar</button>
-</section>
-
-<section id="usuarios" style="display:none">
+<div class="card-container">
   <div class="card">
-    <h3>Usuarios activos</h3>
-    <div id="listaUsuarios"></div>
-  </div>
-</section>
-
-<section id="perfilPublico" style="display:none">
-  <div class="card user">
-    <img id="pubFoto">
-    <div>
-      <h3 id="pubNick"></h3>
-      <p>Edad: <span id="pubEdad"></span></p>
-      <p>Ciudad: <span id="pubCiudad"></span></p>
-      <button disabled>Chat privado (siguiente paso)</button>
+    <img id="foto" src="">
+    <div class="card-info">
+      <h2 id="nombre"></h2>
+      <p id="ciudad"></p>
     </div>
   </div>
-</section>
+</div>
 
-<section id="config" style="display:none">
-  <div class="card">Configuración</div>
-</section>
-
-</main>
-
-<nav>
-  <button id="btn-perfil" onclick="mostrar('perfil')">👤</button>
-  <button id="btn-general" onclick="mostrar('general')">💬</button>
-  <button id="btn-usuarios" onclick="mostrar('usuarios')">👥</button>
-  <button id="btn-config" onclick="mostrar('config')">⚙️</button>
-</nav>
+<div class="actions">
+  <button class="nope" onclick="nope()">❌</button>
+  <button class="like" onclick="like()">❤️</button>
+</div>
 
 </div>
+
+<script>
+const perfiles = [
+  {
+    nombre:"Ana, 23",
+    ciudad:"Lima",
+    foto:"https://images.unsplash.com/photo-1503342217505-b0a15ec3261c"
+  },
+  {
+    nombre:"Lucía, 26",
+    ciudad:"Arequipa",
+    foto:"https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+  },
+  {
+    nombre:"María, 24",
+    ciudad:"Cusco",
+    foto:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e"
+  }
+];
+
+let index=0;
+
+function mostrarPerfil(){
+  if(index>=perfiles.length){
+    alert("No hay más perfiles");
+    return;
+  }
+  const p=perfiles[index];
+  foto.src=p.foto;
+  nombre.innerText=p.nombre;
+  ciudad.innerText=p.ciudad;
+}
+
+function like(){
+  index++;
+  mostrarPerfil();
+}
+
+function nope(){
+  index++;
+  mostrarPerfil();
+}
+
+mostrarPerfil();
+</script>
 
 </body>
 </html>
