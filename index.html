@@ -39,9 +39,7 @@ input,select{
   border:1px solid #333;
 }
 #app,#perfil{display:none}
-.flex{display:flex;gap:6px}
 .box{
-  flex:1;
   background:#000;
   padding:8px;
   border-radius:8px;
@@ -57,8 +55,6 @@ input,select{
   border-radius:8px;
 }
 .msg{margin-bottom:5px}
-.hombre{color:#4da6ff}
-.mujer{color:#ff66cc}
 </style>
 </head>
 
@@ -66,6 +62,7 @@ input,select{
 
 <div class="container" id="login">
   <h2>🔥 CHAT 🔥</h2>
+
   <button onclick="loginGoogle()">🔵 Entrar con Google</button>
 
   <hr style="border:1px solid #333">
@@ -75,7 +72,7 @@ input,select{
   <button onclick="loginTelefono()">📱 Entrar con Teléfono</button>
 
   <input id="codigo" placeholder="Código SMS">
-  <button onclick="verificarCodigo()">✔ Verificar</button>
+  <button onclick="verificarCodigo()">✔ Verificar código</button>
 </div>
 
 <div class="container" id="perfil">
@@ -91,20 +88,6 @@ input,select{
 
 <div class="container" id="app">
   <h3 id="info"></h3>
-
-  <div class="flex">
-    <div class="box">
-      <b>👨 Hombres</b>
-      <div id="hombres"></div>
-    </div>
-    <div class="box">
-      <b>👩 Mujeres</b>
-      <div id="mujeres"></div>
-    </div>
-  </div>
-
-  <br>
-
   <div id="mensajes"></div>
   <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
@@ -127,31 +110,38 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();
 const db=firebase.firestore();
 
-let confirmacion=null, usuario=null;
+let confirmation=null;
+let usuario=null;
 
-/* GOOGLE */
+/* 🔵 GOOGLE (REDIRECT, NO POPUP) */
 function loginGoogle(){
-  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
 }
 
-/* TELEFONO */
+/* 📱 TELÉFONO */
 window.onload=()=>{
-  window.recaptcha=new firebase.auth.RecaptchaVerifier('recaptcha',{size:'invisible'});
+  window.recaptcha=new firebase.auth.RecaptchaVerifier(
+    'recaptcha',
+    {size:'normal'}
+  );
 }
+
 function loginTelefono(){
   auth.signInWithPhoneNumber(
     document.getElementById("telefono").value,
     window.recaptcha
   ).then(r=>{
-    confirmacion=r;
-    alert("Código enviado");
-  });
-}
-function verificarCodigo(){
-  confirmacion.confirm(document.getElementById("codigo").value);
+    confirmation=r;
+    alert("Código enviado por SMS");
+  }).catch(e=>alert(e.message));
 }
 
-/* SESION */
+function verificarCodigo(){
+  if(!confirmation) return alert("Primero envía el SMS");
+  confirmation.confirm(document.getElementById("codigo").value);
+}
+
+/* SESIÓN */
 auth.onAuthStateChanged(u=>{
   if(!u) return;
   usuario=u;
@@ -167,39 +157,25 @@ auth.onAuthStateChanged(u=>{
 
 /* PERFIL */
 function guardarPerfil(){
+  if(!nick.value || !tipo.value) return alert("Completa todo");
   db.collection("usuarios").doc(usuario.uid).set({
     nick:nick.value,
-    tipo:tipo.value,
-    online:true
+    tipo:tipo.value
   }).then(()=>{
     iniciarApp({nick:nick.value,tipo:tipo.value});
   });
 }
 
 function iniciarApp(d){
-  perfil.style.display="none";
   login.style.display="none";
+  perfil.style.display="none";
   app.style.display="block";
   info.innerText=d.nick+" ("+d.tipo+")";
 }
 
-/* LISTAS */
-db.collection("usuarios").onSnapshot(s=>{
-  hombres.innerHTML="";
-  mujeres.innerHTML="";
-  s.forEach(doc=>{
-    let u=doc.data();
-    if(u.online){
-      let div=document.createElement("div");
-      div.innerText=u.nick;
-      if(u.tipo=="hombre") hombres.appendChild(div);
-      if(u.tipo=="mujer") mujeres.appendChild(div);
-    }
-  });
-});
-
 /* CHAT */
 function enviar(){
+  if(!texto.value) return;
   db.collection("mensajes").add({
     nick:info.innerText,
     texto:texto.value,
@@ -211,4 +187,20 @@ function enviar(){
 db.collection("mensajes").orderBy("time")
 .onSnapshot(s=>{
   mensajes.innerHTML="";
-  s.forEac
+  s.forEach(doc=>{
+    let d=document.createElement("div");
+    d.className="msg";
+    d.innerText=doc.data().nick+": "+doc.data().texto;
+    mensajes.appendChild(d);
+  });
+});
+
+/* SALIR */
+function salir(){
+  auth.signOut();
+  location.reload();
+}
+</script>
+
+</body>
+</html>
