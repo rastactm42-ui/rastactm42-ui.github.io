@@ -8,19 +8,19 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial;
   background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
-  text-align:center;
 }
 .container{
-  max-width:500px;
-  margin:30px auto;
+  max-width:420px;
+  margin:40px auto;
   background:rgba(0,0,0,.9);
   padding:20px;
   border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
 }
+h2{text-align:center;color:#ff00ff}
 button,input,select{
   width:100%;
   padding:12px;
@@ -32,29 +32,22 @@ button{
   background:linear-gradient(90deg,#ff00ff,#ff0066);
   color:#fff;
   font-weight:bold;
-  cursor:pointer;
 }
 input,select{
   background:#111;
   color:#fff;
   border:1px solid #333;
 }
-#chat{
-  height:200px;
+#chat{display:none}
+#mensajes{
+  height:260px;
   overflow-y:auto;
   background:#000;
   border:1px solid #333;
   padding:10px;
-  margin-top:10px;
+  margin-bottom:8px;
 }
-.msg{
-  text-align:left;
-  margin-bottom:6px;
-}
-.regalo{
-  color:#ffd700;
-  font-weight:bold;
-}
+.msg{margin-bottom:6px}
 </style>
 
 <script type="module">
@@ -67,24 +60,28 @@ import {
   signOut,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
 import {
   getFirestore,
   doc,
-  setDoc,
   getDoc,
+  setDoc,
   updateDoc,
-  addDoc,
   collection,
+  addDoc,
+  query,
+  orderBy,
   onSnapshot,
   serverTimestamp,
   increment
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+/* 🔥 TU FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
   projectId: "chat-1adf8",
-  storageBucket: "chat-1adf8.appspot.com",
+  storageBucket: "chat-1adf8.firebasestorage.app",
   messagingSenderId: "466107819820",
   appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
@@ -96,135 +93,114 @@ const provider = new GoogleAuthProvider();
 
 let userData = null;
 
-/* LOGIN */
-window.loginGoogle = async ()=>{
-  await signInWithPopup(auth, provider);
+/* LOGIN GOOGLE */
+window.loginGoogle = async()=>{
+  await signInWithPopup(auth,provider);
 };
 
 /* SESIÓN */
-onAuthStateChanged(auth, async user=>{
+onAuthStateChanged(auth, async(user)=>{
   if(!user) return;
-
-  document.getElementById("login").style.display="none";
-  document.getElementById("perfil").style.display="block";
 
   const ref = doc(db,"usuarios",user.uid);
   const snap = await getDoc(ref);
 
   if(!snap.exists()){
-    await setDoc(ref,{
-      uid:user.uid,
-      email:user.email,
-      nick:user.displayName || "",
-      genero:"",
-      monedas:100,
-      ganancias:0,
-      creado:serverTimestamp()
-    });
+    document.getElementById("login").style.display="none";
+    document.getElementById("setup").style.display="block";
+  }else{
+    userData = snap.data();
+    entrarChat();
   }
-
-  userData = (await getDoc(ref)).data();
-  document.getElementById("nick").value = userData.nick;
-  actualizarUI();
-  escucharChat();
 });
 
 /* GUARDAR PERFIL */
-window.guardarPerfil = async ()=>{
-  const nick = document.getElementById("nick").value;
-  const genero = document.getElementById("genero").value;
-  if(!nick || !genero) return alert("Completa nick y género");
+window.guardarPerfil = async()=>{
+  const nick = nickInput.value;
+  const genero = generoSelect.value;
+  if(!nick || !genero) return alert("Completa todo");
+
+  const monedas = genero==="hombre"?500:0;
+
+  await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
+    nick,
+    genero,
+    monedas,
+    ganancias:0
+  });
 
   await updateProfile(auth.currentUser,{displayName:nick});
-  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    nick, genero
-  });
-
-  userData.nick = nick;
-  userData.genero = genero;
-  actualizarUI();
+  location.reload();
 };
 
-/* UI */
-function actualizarUI(){
-  document.getElementById("info").innerText =
-    userData.nick+" | "+userData.genero+
-    " | 💰 "+userData.monedas+
-    " | 💵 "+userData.ganancias;
+/* ENTRAR AL CHAT */
+function entrarChat(){
+  document.getElementById("login").style.display="none";
+  document.getElementById("setup").style.display="none";
+  document.getElementById("chat").style.display="block";
+
+  usuario.innerText = userData.nick+" ("+userData.genero+")";
+  monedasEl.innerText = userData.monedas;
+
+  escucharChat();
 }
 
-/* CHAT GENERAL */
-window.enviarMensaje = async ()=>{
-  const t = document.getElementById("texto").value;
-  if(!t) return;
+/* ENVIAR MENSAJE */
+window.enviarMensaje = async()=>{
+  if(!texto.value) return;
+
   await addDoc(collection(db,"chat"),{
     nick:userData.nick,
-    texto:t,
+    genero:userData.genero,
+    texto:texto.value,
+    tipo:"texto",
     time:serverTimestamp()
   });
-  document.getElementById("texto").value="";
+  texto.value="";
 };
 
+/* ESCUCHAR CHAT */
 function escucharChat(){
-  onSnapshot(collection(db,"chat"), snap=>{
-    const c = document.getElementById("chat");
-    c.innerHTML="";
+  const q = query(collection(db,"chat"),orderBy("time"));
+  onSnapshot(q,snap=>{
+    mensajes.innerHTML="";
     snap.forEach(d=>{
-      const m = d.data();
-      const div = document.createElement("div");
+      const m=d.data();
+      const div=document.createElement("div");
       div.className="msg";
+
+      if(m.tipo==="regalo") div.style.color="#FFD700";
+      else if(m.genero==="mujer") div.style.color="#ff4fd8";
+      else div.style.color="#4fc3ff";
+
       div.innerText = m.nick+": "+m.texto;
-      c.appendChild(div);
-      c.scrollTop = c.scrollHeight;
+      mensajes.appendChild(div);
     });
+    mensajes.scrollTop = mensajes.scrollHeight;
   });
 }
 
-/* REGALOS */
-window.enviarRegalo = async (nombre,precio)=>{
+/* REGALO */
+window.enviarRegalo = async(nombre,precio)=>{
   if(userData.monedas < precio) return alert("No tienes monedas");
 
-  const ganancia = Math.floor(precio * 0.6);
-
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    monedas: increment(-precio)
+    monedas:increment(-precio)
   });
 
   await addDoc(collection(db,"chat"),{
     nick:userData.nick,
-    texto:`🎁 Envió ${nombre} (${precio} monedas)`,
+    texto:`🎁 ${nombre} (${precio})`,
+    tipo:"regalo",
     time:serverTimestamp()
   });
 
   userData.monedas -= precio;
-  actualizarUI();
-};
-
-/* ANUNCIO */
-window.verAnuncio = ()=>{
-  const b = document.getElementById("anuncio");
-  b.disabled=true;
-  let s=30;
-  b.innerText="Viendo anuncio... "+s;
-  const i=setInterval(async ()=>{
-    s--;
-    b.innerText="Viendo anuncio... "+s;
-    if(s<=0){
-      clearInterval(i);
-      await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-        monedas: increment(100)
-      });
-      userData.monedas+=100;
-      actualizarUI();
-      b.innerText="🎥 Ver anuncio (+100)";
-      b.disabled=false;
-      alert("Ganaste 100 monedas");
-    }
-  },1000);
+  monedasEl.innerText = userData.monedas;
 };
 
 /* SALIR */
-window.salir = async ()=>{
+window.salir = async()=>{
   await signOut(auth);
   location.reload();
 };
@@ -238,31 +214,30 @@ window.salir = async ()=>{
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div class="container" id="perfil" style="display:none">
-  <h3>Perfil</h3>
-  <input id="nick" placeholder="Nick">
-  <select id="genero">
-    <option value="">Género</option>
+<div class="container" id="setup" style="display:none">
+  <h2>Configura tu perfil</h2>
+  <input id="nickInput" placeholder="Tu nick">
+  <select id="generoSelect">
+    <option value="">Selecciona género</option>
     <option value="hombre">Hombre</option>
     <option value="mujer">Mujer</option>
   </select>
-  <button onclick="guardarPerfil()">Guardar perfil</button>
+  <button onclick="guardarPerfil()">Guardar</button>
+</div>
 
-  <p id="info"></p>
+<div class="container" id="chat">
+  👤 <span id="usuario"></span><br>
+  💰 Monedas: <span id="monedasEl">0</span><br><br>
 
-  <button id="anuncio" onclick="verAnuncio()">🎥 Ver anuncio (+100)</button>
+  <div id="mensajes"></div>
 
-  <hr>
-
-  <h3>Chat general (GRATIS)</h3>
-  <div id="chat"></div>
   <input id="texto" placeholder="Mensaje">
   <button onclick="enviarMensaje()">Enviar</button>
 
-  <h4>Regalos</h4>
-  <button onclick="enviarRegalo('🌹 Rosa',5)">🌹 Rosa (5)</button>
-  <button onclick="enviarRegalo('🍷 Trago',15)">🍷 Trago (15)</button>
-  <button onclick="enviarRegalo('💎 Diamante',50)">💎 Diamante (50)</button>
+  <hr>
+  <button onclick="enviarRegalo('Rosa',50)">🌹 Rosa (50)</button>
+  <button onclick="enviarRegalo('Copa',100)">🍷 Copa (100)</button>
+  <button onclick="enviarRegalo('Diamante',300)">💎 Diamante (300)</button>
 
   <br><br>
   <button onclick="salir()">Salir</button>
