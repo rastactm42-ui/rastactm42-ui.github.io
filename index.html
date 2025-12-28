@@ -31,9 +31,7 @@ body{
 }
 
 /* PERFIL / CARDS */
-.card{
-  text-align:center;
-}
+.card{text-align:center}
 #fotoPerfil{
   width:120px;
   height:120px;
@@ -68,6 +66,22 @@ body{
 .like{background:#00e676;color:#000}
 .nope{background:#ff1744}
 
+/* MATCHES */
+.match{
+  display:flex;
+  align-items:center;
+  padding:10px;
+  border-bottom:1px solid #222;
+  cursor:pointer;
+}
+.match img{
+  width:50px;
+  height:50px;
+  border-radius:50%;
+  margin-right:10px;
+  object-fit:cover;
+}
+
 /* CHAT */
 #mensajes{
   height:calc(100vh - 140px);
@@ -78,7 +92,7 @@ body{
 .yo{color:#00e676}
 .otro{color:#fff}
 
-/* BARRA INFERIOR */
+/* NAV */
 #nav{
   position:fixed;
   bottom:0;
@@ -99,6 +113,7 @@ body{
   color:#ff00ff;
   font-weight:bold;
 }
+
 button{
   padding:12px;
   border-radius:30px;
@@ -115,7 +130,7 @@ input{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, updateProfile } 
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, onSnapshot, query, orderBy } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -134,7 +149,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let yo=null, usuarios=[], index=0, chatId=null;
+let yo=null, usuarios=[], index=0, chatId=null, matches=[];
 
 /* LOGIN */
 window.loginGoogle=async()=>{await signInWithPopup(auth,provider)};
@@ -153,17 +168,18 @@ onAuthStateChanged(auth, async user=>{
       foto:user.photoURL
     });
   }
+
   document.getElementById("nick").innerText=user.displayName;
   document.getElementById("fotoPerfil").src=user.photoURL;
 
   cargarUsuarios();
+  cargarMatches();
 });
 
-/* NAVEGACIÓN */
+/* NAV */
 window.mostrarVista=(id)=>{
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById(id).classList.add("active");
-
   document.querySelectorAll("#nav button").forEach(b=>b.classList.remove("active"));
   document.getElementById("btn_"+id).classList.add("active");
 };
@@ -174,30 +190,49 @@ async function cargarUsuarios(){
   usuarios=snap.docs.map(d=>d.data()).filter(u=>u.uid!==yo.uid);
   mostrarPerfil();
 }
-
 function mostrarPerfil(){
   if(index>=usuarios.length) return;
   const u=usuarios[index];
   document.getElementById("fotoSwipe").src=u.foto;
   document.getElementById("nombreSwipe").innerText=u.nombre;
 }
-
 window.like=async()=>{
   const u=usuarios[index];
   await setDoc(doc(db,"likes",yo.uid+"_"+u.uid),{});
   const match=await getDoc(doc(db,"likes",u.uid+"_"+yo.uid));
   if(match.exists()){
-    chatId=[yo.uid,u.uid].sort().join("_");
-    mostrarVista("chat");
-    escucharChat();
-    return;
+    const id=[yo.uid,u.uid].sort().join("_");
+    await setDoc(doc(db,"matches",id),{a:yo.uid,b:u.uid});
+    cargarMatches();
   }
   index++; mostrarPerfil();
 };
 window.nope=()=>{index++; mostrarPerfil()};
 
+/* MATCHES */
+async function cargarMatches(){
+  const cont=document.getElementById("listaMatches");
+  cont.innerHTML="";
+  const snap=await getDocs(collection(db,"matches"));
+  snap.forEach(async d=>{
+    const m=d.data();
+    if(m.a===yo.uid || m.b===yo.uid){
+      const otro=m.a===yo.uid?m.b:m.a;
+      const u=await getDoc(doc(db,"users",otro));
+      const data=u.data();
+      const div=document.createElement("div");
+      div.className="match";
+      div.innerHTML=`<img src="${data.foto}"><b>${data.nombre}</b>`;
+      div.onclick=()=>abrirChat(otro);
+      cont.appendChild(div);
+    }
+  });
+}
+
 /* CHAT */
-function escucharChat(){
+function abrirChat(uid){
+  chatId=[yo.uid,uid].sort().join("_");
+  mostrarVista("chat");
   const q=query(collection(db,"chats",chatId,"msgs"),orderBy("time"));
   onSnapshot(q,snap=>{
     const div=document.getElementById("mensajes");
@@ -212,7 +247,6 @@ function escucharChat(){
     div.scrollTop=div.scrollHeight;
   });
 }
-
 window.enviar=async()=>{
   const t=document.getElementById("texto");
   if(!t.value) return;
@@ -254,9 +288,10 @@ window.enviar=async()=>{
   <input id="texto" placeholder="Mensaje..." onkeydown="if(event.key==='Enter')enviar()">
 </div>
 
-<!-- MATCHES (placeholder) -->
+<!-- MATCHES -->
 <div id="matches" class="view">
-  <h3 style="text-align:center">Matches</h3>
+  <h3 style="text-align:center">Tus Matches</h3>
+  <div id="listaMatches"></div>
 </div>
 
 <!-- PERFIL -->
@@ -267,7 +302,7 @@ window.enviar=async()=>{
   </div>
 </div>
 
-<!-- BARRA INFERIOR -->
+<!-- NAV -->
 <div id="nav">
   <button id="btn_descubrir" onclick="mostrarVista('descubrir')">🔥<br>Descubrir</button>
   <button id="btn_chat" onclick="mostrarVista('chat')">💬<br>Chat</button>
