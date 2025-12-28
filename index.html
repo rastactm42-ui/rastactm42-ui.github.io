@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>Chat Firebase</title>
 
 <style>
 body{
@@ -12,8 +12,8 @@ body{
   color:#fff;
 }
 .container{
-  max-width:400px;
-  margin:50px auto;
+  max-width:420px;
+  margin:40px auto;
   background:rgba(0,0,0,.9);
   padding:20px;
   border-radius:16px;
@@ -36,7 +36,6 @@ button{
   padding:10px;margin-bottom:8px;
 }
 .mensaje{margin-bottom:6px}
-.panel{font-size:14px;margin-bottom:6px}
 </style>
 </head>
 
@@ -47,32 +46,27 @@ button{
   <input id="email" placeholder="Correo electrónico">
   <input id="password" type="password" placeholder="Contraseña">
   <button onclick="registrar()">REGISTRARSE</button>
-  <button onclick="login()">INICIAR SESIÓN</button>
+  <button onclick="login()">ENTRAR</button>
 </div>
 
 <div class="container" id="chat">
   <h2>💬 CHAT</h2>
-
-  <div class="panel">
-    👤 <span id="infoUser"></span><br>
-    💰 Monedas: <span id="monedas">100</span>
-  </div>
+  👤 <span id="infoUser"></span><br><br>
 
   <div id="mensajes"></div>
 
   <input id="texto" placeholder="Escribe un mensaje">
   <button onclick="enviar()">ENVIAR</button>
-  <button onclick="regalo()">🎁 Enviar regalo (10)</button>
-  <button onclick="salir()">🚪 Salir</button>
+  <button onclick="salir()">SALIR</button>
 </div>
 
-<!-- FIREBASE -->
+<!-- 🔥 FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-// CONFIG FIREBASE
+/* CONFIG FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
@@ -86,27 +80,29 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let monedas = 100;
+/* ELEMENTOS */
+const emailEl = document.getElementById("email");
+const passEl = document.getElementById("password");
+const loginDiv = document.getElementById("login");
+const chatDiv = document.getElementById("chat");
+const infoUser = document.getElementById("infoUser");
+const texto = document.getElementById("texto");
+const mensajes = document.getElementById("mensajes");
 
-// REGISTRO
+/* REGISTRO */
 function registrar(){
-  const email = emailEl.value;
-  const pass = passEl.value;
-  if(!email || !pass) return alert("Completa los campos");
-  auth.createUserWithEmailAndPassword(email, pass)
-    .then(()=>alert("Registrado correctamente"))
-    .catch(e=>alert(e.message));
+  auth.createUserWithEmailAndPassword(emailEl.value, passEl.value)
+  .then(()=>alert("Usuario creado ✔️"))
+  .catch(e=>alert(e.message));
 }
 
-// LOGIN
+/* LOGIN */
 function login(){
-  const email = emailEl.value;
-  const pass = passEl.value;
-  auth.signInWithEmailAndPassword(email, pass)
-    .catch(e=>alert(e.message));
+  auth.signInWithEmailAndPassword(emailEl.value, passEl.value)
+  .catch(e=>alert(e.message));
 }
 
-// SESIÓN ACTIVA
+/* SESIÓN */
 auth.onAuthStateChanged(user=>{
   if(user){
     loginDiv.style.display="none";
@@ -115,7 +111,34 @@ auth.onAuthStateChanged(user=>{
   }
 });
 
-// CHAT
+/* CHAT */
 function enviar(){
   if(!texto.value) return;
-  db.
+  db.collection("mensajes").add({
+    user: auth.currentUser.email,
+    texto: texto.value,
+    time: Date.now()
+  });
+  texto.value="";
+}
+
+db.collection("mensajes").orderBy("time")
+.onSnapshot(snap=>{
+  mensajes.innerHTML="";
+  snap.forEach(doc=>{
+    const d=document.createElement("div");
+    d.className="mensaje";
+    d.textContent=doc.data().user+": "+doc.data().texto;
+    mensajes.appendChild(d);
+  });
+});
+
+/* SALIR */
+function salir(){
+  auth.signOut();
+  location.reload();
+}
+</script>
+
+</body>
+</html>
