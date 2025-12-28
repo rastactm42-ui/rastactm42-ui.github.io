@@ -45,7 +45,6 @@ input,select{
   background:#000;
   border:1px solid #333;
   padding:8px;
-  margin-bottom:8px;
 }
 .msg{margin-bottom:6px}
 .userItem{
@@ -112,8 +111,10 @@ window.guardarPerfil = async()=>{
 
   await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
     uid:auth.currentUser.uid,
-    nick,genero,
-    monedas: genero==="hombre"?500:0
+    nick,
+    genero,
+    monedas: genero==="hombre"?500:0,
+    ganancias:0
   });
   await updateProfile(auth.currentUser,{displayName:nick});
   location.reload();
@@ -126,6 +127,7 @@ function entrar(){
   chat.style.display="block";
   usuario.innerText=userData.nick;
   monedasEl.innerText=userData.monedas;
+  gananciasEl.innerText=userData.ganancias||0;
   chatGeneral();
   listarUsuarios();
 }
@@ -159,7 +161,7 @@ window.enviarMensaje=async()=>{
   texto.value="";
 };
 
-/* LISTA USUARIOS */
+/* USUARIOS */
 function listarUsuarios(){
   onSnapshot(collection(db,"usuarios"),s=>{
     lista.innerHTML="";
@@ -175,7 +177,7 @@ function listarUsuarios(){
   });
 }
 
-/* CHAT PRIVADO */
+/* PRIVADO */
 function abrirPrivado(u){
   privadoCon=u;
   chat.style.display="none";
@@ -200,12 +202,21 @@ function escucharPrivado(){
 
 window.enviarPrivado=async()=>{
   if(userData.monedas<20) return alert("No tienes monedas");
-  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
+
+  const mujer = privadoCon.genero==="mujer";
+  const ganancia = mujer ? 12 : 0;
 
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
     monedas:increment(-20)
   });
 
+  if(mujer){
+    await updateDoc(doc(db,"usuarios",privadoCon.uid),{
+      ganancias:increment(ganancia)
+    });
+  }
+
+  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
   await addDoc(collection(db,"privados",id,"msgs"),{
     nick:userData.nick,
     texto:textoPriv.value,
@@ -223,18 +234,27 @@ window.volver=()=>{
 };
 
 /* REGALO */
-window.enviarRegalo=async(n,p)=>{
-  if(userData.monedas<p) return;
+window.enviarRegalo=async(nombre,precio)=>{
+  if(userData.monedas<precio) return;
+
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    monedas:increment(-p)
+    monedas:increment(-precio)
   });
+
+  if(userData.genero==="hombre"){
+    await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+      monedas:increment(0)
+    });
+  }
+
   await addDoc(collection(db,"chat"),{
     nick:userData.nick,
-    texto:`🎁 ${n} (${p})`,
+    texto:`🎁 ${nombre} (${precio})`,
     tipo:"regalo",
     time:serverTimestamp()
   });
-  userData.monedas-=p;
+
+  userData.monedas-=precio;
   monedasEl.innerText=userData.monedas;
 };
 
@@ -262,7 +282,8 @@ window.salir=async()=>{await signOut(auth);location.reload();}
 
 <div class="container" id="chat">
   👤 <span id="usuario"></span><br>
-  💰 <span id="monedasEl"></span> monedas
+  💰 Monedas: <span id="monedasEl"></span><br>
+  💵 Ganancias: <span id="gananciasEl">0</span>
   <div id="mensajes"></div>
   <input id="texto" placeholder="Mensaje gratis">
   <button onclick="enviarMensaje()">Enviar</button>
@@ -277,7 +298,7 @@ window.salir=async()=>{await signOut(auth);location.reload();}
 
 <div class="container" id="privado">
   <h2>Chat privado con <span id="privadoNick"></span></h2>
-  <p>Costo: 20 monedas por mensaje</p>
+  <p>Costo: 20 monedas</p>
   <div id="mensajesPriv"></div>
   <input id="textoPriv" placeholder="Mensaje privado">
   <button onclick="enviarPrivado()">Enviar (20)</button>
