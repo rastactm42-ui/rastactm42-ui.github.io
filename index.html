@@ -73,15 +73,26 @@ button{
   border:none;
   border-radius:8px;
 }
-.msg{
-  margin:6px 0;
-}
+.msg{margin:6px 0}
 .chat-box{
   height:55vh;
   overflow-y:auto;
   border:1px solid #ddd;
   padding:8px;
   background:#fff;
+}
+.lista-usuario{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+.lista-usuario img{
+  width:50px;
+  height:50px;
+  border-radius:50%;
 }
 </style>
 
@@ -112,6 +123,7 @@ const provider = new GoogleAuthProvider();
 
 let user=null;
 let userData=null;
+let usuarioSeleccionado=null;
 
 window.login = async()=>{
   await signInWithPopup(auth,provider);
@@ -136,6 +148,7 @@ onAuthStateChanged(auth, async u=>{
   userData=(await getDoc(ref)).data();
   cargarPerfil();
   escucharChat();
+  cargarUsuarios();
   mostrar("perfil");
 });
 
@@ -189,6 +202,38 @@ function escucharChat(){
   });
 }
 
+function cargarUsuarios(){
+  onSnapshot(collection(db,"usuarios"),snap=>{
+    listaUsuarios.innerHTML="";
+    snap.forEach(d=>{
+      if(d.id===user.uid) return;
+      const u=d.data();
+      const div=document.createElement("div");
+      div.className="lista-usuario";
+      div.innerHTML=`
+        <img src="${u.foto}">
+        <div>
+          <b>${u.nick}</b><br>
+          <small>${u.ciudad||""}</small>
+        </div>
+      `;
+      div.onclick=()=>{
+        usuarioSeleccionado=u;
+        verUsuario();
+      };
+      listaUsuarios.appendChild(div);
+    });
+  });
+}
+
+function verUsuario(){
+  mostrar("perfilPublico");
+  pubFoto.src=usuarioSeleccionado.foto;
+  pubNick.innerText=usuarioSeleccionado.nick;
+  pubEdad.innerText=usuarioSeleccionado.edad||"";
+  pubCiudad.innerText=usuarioSeleccionado.ciudad||"";
+}
+
 window.salir=async()=>{
   await signOut(auth);
   location.reload();
@@ -233,7 +278,22 @@ window.salir=async()=>{
 </section>
 
 <section id="usuarios" style="display:none">
-  <div class="card">Próximo paso: lista de usuarios activos</div>
+  <div class="card">
+    <h3>Usuarios activos</h3>
+    <div id="listaUsuarios"></div>
+  </div>
+</section>
+
+<section id="perfilPublico" style="display:none">
+  <div class="card user">
+    <img id="pubFoto">
+    <div>
+      <h3 id="pubNick"></h3>
+      <p>Edad: <span id="pubEdad"></span></p>
+      <p>Ciudad: <span id="pubCiudad"></span></p>
+      <button disabled>Chat privado (siguiente paso)</button>
+    </div>
+  </div>
 </section>
 
 <section id="config" style="display:none">
