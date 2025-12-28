@@ -13,7 +13,15 @@ body{
   background:#000;
   color:#fff;
 }
-#login,#app{
+button{
+  padding:14px;
+  border:none;
+  border-radius:30px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+#login,#swipe,#chat{
   height:100vh;
   display:flex;
   justify-content:center;
@@ -23,15 +31,6 @@ body{
   width:100%;
   max-width:420px;
   text-align:center;
-}
-button{
-  padding:14px;
-  width:100%;
-  border:none;
-  border-radius:30px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
 }
 #perfil{
   position:relative;
@@ -58,13 +57,36 @@ button{
 }
 .like{background:#00e676;color:#000}
 .nope{background:#ff1744}
+#chatBox{
+  width:100%;
+  max-width:420px;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+#mensajes{
+  flex:1;
+  overflow:auto;
+  padding:10px;
+}
+.msg{
+  margin:6px 0;
+}
+.yo{color:#00e676}
+.otro{color:#fff}
+input{
+  padding:12px;
+  width:100%;
+  border:none;
+  outline:none;
+}
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc } 
+import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, onSnapshot, query, orderBy } 
 from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -81,40 +103,30 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let usuarios = [];
-let index = 0;
-let yo = null;
+let usuarios=[], index=0, yo=null, chatId=null;
 
-window.loginGoogle = async()=>{
-  await signInWithPopup(auth,provider);
-};
+window.loginGoogle = async()=>{ await signInWithPopup(auth,provider); };
 
 onAuthStateChanged(auth, async user=>{
   if(!user) return;
-  yo = user;
+  yo=user;
   document.getElementById("login").style.display="none";
-  document.getElementById("app").style.display="block";
+  document.getElementById("swipe").style.display="block";
 
-  const ref = doc(db,"users",user.uid);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
+  const ref=doc(db,"users",user.uid);
+  if(!(await getDoc(ref)).exists()){
     await setDoc(ref,{
       uid:user.uid,
       nombre:user.displayName,
       foto:user.photoURL
     });
   }
-
   cargarUsuarios();
 });
 
 async function cargarUsuarios(){
-  const snap = await getDocs(collection(db,"users"));
-  usuarios = snap.docs
-    .map(d=>d.data())
-    .filter(u=>u.uid!==yo.uid);
-
+  const snap=await getDocs(collection(db,"users"));
+  usuarios=snap.docs.map(d=>d.data()).filter(u=>u.uid!==yo.uid);
   mostrar();
 }
 
@@ -123,30 +135,56 @@ function mostrar(){
     alert("No hay más perfiles");
     return;
   }
-  const u = usuarios[index];
-  document.getElementById("foto").src = u.foto;
-  document.getElementById("nombre").innerText = u.nombre;
+  const u=usuarios[index];
+  document.getElementById("foto").src=u.foto;
+  document.getElementById("nombre").innerText=u.nombre;
 }
 
-window.like = async()=>{
-  const u = usuarios[index];
-  await setDoc(doc(db,"likes",yo.uid+"_"+u.uid),{
-    de:yo.uid,
-    a:u.uid
-  });
-
-  const match = await getDoc(doc(db,"likes",u.uid+"_"+yo.uid));
+window.like=async()=>{
+  const u=usuarios[index];
+  await setDoc(doc(db,"likes",yo.uid+"_"+u.uid),{de:yo.uid,a:u.uid});
+  const match=await getDoc(doc(db,"likes",u.uid+"_"+yo.uid));
   if(match.exists()){
-    alert("🔥 MATCH con "+u.nombre);
+    iniciarChat(u);
+    return;
   }
-
-  index++;
-  mostrar();
+  index++; mostrar();
 };
 
-window.nope = ()=>{
-  index++;
-  mostrar();
+window.nope=()=>{ index++; mostrar(); };
+
+function iniciarChat(u){
+  chatId=[yo.uid,u.uid].sort().join("_");
+  document.getElementById("swipe").style.display="none";
+  document.getElementById("chat").style.display="flex";
+  escucharMensajes();
+}
+
+function escucharMensajes(){
+  const q=query(collection(db,"chats",chatId,"msgs"),orderBy("time"));
+  onSnapshot(q,snap=>{
+    const div=document.getElementById("mensajes");
+    div.innerHTML="";
+    snap.forEach(d=>{
+      const m=d.data();
+      const p=document.createElement("div");
+      p.className="msg "+(m.uid===yo.uid?"yo":"otro");
+      p.innerText=m.texto;
+      div.appendChild(p);
+    });
+    div.scrollTop=div.scrollHeight;
+  });
+}
+
+window.enviar=async()=>{
+  const txt=document.getElementById("texto");
+  if(!txt.value) return;
+  await addDoc(collection(db,"chats",chatId,"msgs"),{
+    uid:yo.uid,
+    texto:txt.value,
+    time:Date.now()
+  });
+  txt.value="";
 };
 </script>
 </head>
@@ -160,16 +198,21 @@ window.nope = ()=>{
   </div>
 </div>
 
-<div id="app" style="display:none">
+<div id="swipe" style="display:none">
   <div id="perfil">
     <img id="foto">
-    <div class="info">
-      <h2 id="nombre"></h2>
-    </div>
+    <div class="info"><h2 id="nombre"></h2></div>
     <div class="acciones">
       <button class="nope" onclick="nope()">❌</button>
       <button class="like" onclick="like()">❤️</button>
     </div>
+  </div>
+</div>
+
+<div id="chat" style="display:none">
+  <div id="chatBox">
+    <div id="mensajes"></div>
+    <input id="texto" placeholder="Escribe..." onkeydown="if(event.key==='Enter')enviar()">
   </div>
 </div>
 
