@@ -11,14 +11,12 @@ body{
  margin:0;
  font-family:Arial,Helvetica,sans-serif;
  background:linear-gradient(135deg,#7b1fa2,#9c27b0,#6a1b9a);
- color:#fff;
 }
 .app{
  max-width:430px;
  margin:auto;
  min-height:100vh;
  background:#fff;
- color:#000;
  display:flex;
  flex-direction:column;
 }
@@ -31,36 +29,40 @@ header{
  font-weight:bold;
 }
 .screen{flex:1;overflow:auto}
+.hidden{display:none}
 .center{
  display:flex;
  flex-direction:column;
- align-items:center;
  justify-content:center;
+ align-items:center;
  padding:30px;
 }
 button{
  width:100%;
  padding:14px;
+ margin-top:10px;
  border:none;
  border-radius:30px;
+ background:#8e24aa;
+ color:#fff;
  font-size:16px;
  font-weight:bold;
- margin-top:12px;
- cursor:pointer;
 }
-.btn-main{background:#8e24aa;color:#fff}
-.btn-light{background:#f3e5f5}
 input,select{
  width:100%;
  padding:12px;
  margin-top:10px;
  border-radius:10px;
  border:1px solid #ccc;
- font-size:16px;
 }
-.hidden{display:none}
 
-/* GRID USUARIOS */
+/* HOME */
+.info{
+ display:flex;
+ justify-content:space-between;
+ padding:10px;
+ background:#f3e5f5;
+}
 .grid{
  display:grid;
  grid-template-columns:repeat(2,1fr);
@@ -80,11 +82,13 @@ input,select{
  object-fit:cover;
  border-radius:50%;
 }
-.card h4{margin:8px 0 4px}
 
 /* CHAT */
 .chat-box{
+ flex:1;
  padding:10px;
+ overflow:auto;
+ background:#f9f9f9;
 }
 .msg{
  max-width:75%;
@@ -94,11 +98,11 @@ input,select{
  font-size:14px;
 }
 .me{background:#8e24aa;color:#fff;margin-left:auto}
-.other{background:#eee}
+.other{background:#e0e0e0}
 .input-bar{
  display:flex;
- padding:10px;
  gap:8px;
+ padding:10px;
 }
 .input-bar input{
  flex:1;
@@ -106,17 +110,8 @@ input,select{
 }
 .input-bar button{
  width:auto;
- border-radius:20px;
  padding:10px 18px;
-}
-
-/* TOP INFO */
-.info{
- display:flex;
- justify-content:space-between;
- padding:10px;
- background:#f3e5f5;
- font-size:14px;
+ border-radius:20px;
 }
 </style>
 
@@ -148,7 +143,7 @@ const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 
 let userData=null;
-let privadoCon=null;
+let chatId=null;
 
 /* LOGIN */
 window.login=()=>signInWithPopup(auth,provider);
@@ -203,7 +198,6 @@ function cargarUsuarios(){
    card.innerHTML=`
     <img src="${u.foto}">
     <h4>${u.nick}</h4>
-    <button class="btn-light">Ver</button>
    `;
    card.onclick=()=>abrirPrivado(u);
    grid.appendChild(card);
@@ -211,15 +205,35 @@ function cargarUsuarios(){
  });
 }
 
-/* PRIVADO */
+/* ABRIR CHAT PRIVADO */
 function abrirPrivado(u){
- privadoCon=u;
+ chatId=[auth.currentUser.uid,u.uid].sort().join("_");
  home.classList.add("hidden");
  privado.classList.remove("hidden");
  privadoNick.innerText=u.nick;
+ escucharMensajes();
 }
 
-/* ENVIAR PRIVADO */
+/* ESCUCHAR MENSAJES */
+function escucharMensajes(){
+ const q=query(
+  collection(db,"chats",chatId,"mensajes"),
+  orderBy("time")
+ );
+ onSnapshot(q,s=>{
+  chatBox.innerHTML="";
+  s.forEach(d=>{
+   const m=d.data();
+   const div=document.createElement("div");
+   div.className="msg "+(m.de===auth.currentUser.uid?"me":"other");
+   div.innerText=m.texto;
+   chatBox.appendChild(div);
+  });
+  chatBox.scrollTop=chatBox.scrollHeight;
+ });
+}
+
+/* ENVIAR */
 window.enviarPrivado=async()=>{
  if(!msgPriv.value) return;
 
@@ -228,16 +242,12 @@ window.enviarPrivado=async()=>{
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
    monedas:increment(-20)
   });
-  await updateDoc(doc(db,"usuarios",privadoCon.uid),{
-   ganancias:increment(12)
-  });
   userData.monedas-=20;
   monedas.innerText=userData.monedas;
  }
 
- await addDoc(collection(db,"privados"),{
+ await addDoc(collection(db,"chats",chatId,"mensajes"),{
   de:auth.currentUser.uid,
-  para:privadoCon.uid,
   texto:msgPriv.value,
   time:serverTimestamp()
  });
@@ -261,15 +271,12 @@ window.salir=async()=>{
 <body>
 
 <div class="app">
-
 <header>CHAT</header>
 
-<!-- LOGIN -->
 <div id="loginBox" class="screen center">
-<button class="btn-main" onclick="login()">Entrar con Google</button>
+<button onclick="login()">Entrar con Google</button>
 </div>
 
-<!-- PERFIL -->
 <div id="perfil" class="screen center hidden">
 <h3>Completa tu perfil</h3>
 <select id="generoSel">
@@ -277,30 +284,26 @@ window.salir=async()=>{
 <option value="hombre">Hombre</option>
 <option value="mujer">Mujer</option>
 </select>
-<button class="btn-main" onclick="guardarPerfil()">Continuar</button>
+<button onclick="guardarPerfil()">Continuar</button>
 </div>
 
-<!-- HOME -->
 <div id="home" class="screen hidden">
 <div class="info">
 <span id="nick"></span>
 <span>💰 <span id="monedas"></span></span>
 </div>
 <div id="grid" class="grid"></div>
-<div style="padding:10px">
-<button class="btn-main" onclick="salir()">Salir</button>
-</div>
+<button onclick="salir()">Salir</button>
 </div>
 
-<!-- PRIVADO -->
 <div id="privado" class="screen hidden">
 <header>Chat con <span id="privadoNick"></span></header>
-<div class="chat-box"></div>
+<div id="chatBox" class="chat-box"></div>
 <div class="input-bar">
-<input id="msgPriv" placeholder="Mensaje privado (👨 paga 20)">
-<button class="btn-main" onclick="enviarPrivado()">Enviar</button>
+<input id="msgPriv" placeholder="Mensaje (👨 paga 20)">
+<button onclick="enviarPrivado()">Enviar</button>
 </div>
-<button class="btn-light" onclick="volver()">Volver</button>
+<button onclick="volver()">Volver</button>
 </div>
 
 </div>
