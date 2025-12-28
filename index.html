@@ -8,7 +8,7 @@
 <style>
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:linear-gradient(135deg,#000,#1a0033,#000);
   color:#fff;
   text-align:center;
@@ -41,7 +41,6 @@ input{
 }
 </style>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
@@ -53,14 +52,17 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-/* 🔴 PEGA AQUÍ TUS DATOS REALES */
+/* 🔥 CONFIGURACIÓN REAL DE TU FIREBASE */
 const firebaseConfig = {
-  apiKey: "PEGA_AQUI_TU_API_KEY",
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
   projectId: "chat-1adf8",
-  appId: "PEGA_AQUI_TU_APP_ID"
+  storageBucket: "chat-1adf8.firebasestorage.app",
+  messagingSenderId: "466107819820",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
 
+/* INICIALIZAR */
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
@@ -70,16 +72,16 @@ window.loginGoogle = async () => {
   try{
     await signInWithPopup(auth, provider);
   }catch(e){
-    alert("Error: " + e.message);
+    alert("Error al iniciar sesión con Google");
   }
 };
 
-/* SESIÓN */
+/* ESTADO DE SESIÓN */
 onAuthStateChanged(auth, user=>{
   if(user){
     document.getElementById("login").style.display="none";
     document.getElementById("cuenta").style.display="block";
-    document.getElementById("user").innerText =
+    document.getElementById("usuario").innerText =
       user.displayName || user.email;
   }
 });
@@ -89,7 +91,7 @@ window.guardarNick = async ()=>{
   const nick = document.getElementById("nick").value;
   if(!nick) return alert("Escribe un nick");
   await updateProfile(auth.currentUser,{displayName:nick});
-  document.getElementById("user").innerText = nick;
+  document.getElementById("usuario").innerText = nick;
   alert("Nick guardado");
 };
 
@@ -111,7 +113,7 @@ window.salir = async ()=>{
 
 <div class="container" id="cuenta" style="display:none">
   <h3>Bienvenido</h3>
-  <p>👤 <span id="user"></span></p>
+  <p>👤 <span id="usuario"></span></p>
 
   <input id="nick" placeholder="Cambiar nick">
   <button onclick="guardarNick()">Guardar nick</button>
