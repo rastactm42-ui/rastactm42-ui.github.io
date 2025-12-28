@@ -14,9 +14,9 @@ body{
 }
 .container{
   max-width:420px;
-  margin:40px auto;
+  margin:30px auto;
   background:rgba(0,0,0,.9);
-  padding:20px;
+  padding:18px;
   border-radius:16px;
   box-shadow:0 0 25px #ff00ff;
 }
@@ -38,45 +38,37 @@ input,select{
   color:#fff;
   border:1px solid #333;
 }
-#chat{display:none}
-#mensajes{
-  height:260px;
+#chat,#privado,#setup{display:none}
+#mensajes,#mensajesPriv{
+  height:220px;
   overflow-y:auto;
   background:#000;
   border:1px solid #333;
-  padding:10px;
+  padding:8px;
   margin-bottom:8px;
 }
 .msg{margin-bottom:6px}
+.userItem{
+  padding:6px;
+  border-bottom:1px solid #333;
+  cursor:pointer;
+}
+.userItem:hover{background:#222}
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-  signOut,
-  updateProfile
+  getAuth, GoogleAuthProvider, signInWithPopup,
+  onAuthStateChanged, signOut, updateProfile
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
 import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  increment
+  getFirestore, doc, getDoc, setDoc, updateDoc,
+  collection, addDoc, query, orderBy, onSnapshot,
+  serverTimestamp, increment
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 TU FIREBASE */
+/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
@@ -91,64 +83,72 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let userData = null;
+let userData=null;
+let privadoCon=null;
 
-/* LOGIN GOOGLE */
-window.loginGoogle = async()=>{
-  await signInWithPopup(auth,provider);
-};
+/* LOGIN */
+window.loginGoogle = ()=>signInWithPopup(auth,provider);
 
 /* SESIÓN */
 onAuthStateChanged(auth, async(user)=>{
   if(!user) return;
-
-  const ref = doc(db,"usuarios",user.uid);
-  const snap = await getDoc(ref);
+  const ref=doc(db,"usuarios",user.uid);
+  const snap=await getDoc(ref);
 
   if(!snap.exists()){
-    document.getElementById("login").style.display="none";
-    document.getElementById("setup").style.display="block";
+    login.style.display="none";
+    setup.style.display="block";
   }else{
-    userData = snap.data();
-    entrarChat();
+    userData=snap.data();
+    entrar();
   }
 });
 
-/* GUARDAR PERFIL */
+/* PERFIL */
 window.guardarPerfil = async()=>{
-  const nick = nickInput.value;
-  const genero = generoSelect.value;
-  if(!nick || !genero) return alert("Completa todo");
-
-  const monedas = genero==="hombre"?500:0;
+  const nick=nickInput.value;
+  const genero=generoSelect.value;
+  if(!nick||!genero) return alert("Completa todo");
 
   await setDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    nick,
-    genero,
-    monedas,
-    ganancias:0
+    uid:auth.currentUser.uid,
+    nick,genero,
+    monedas: genero==="hombre"?500:0
   });
-
   await updateProfile(auth.currentUser,{displayName:nick});
   location.reload();
 };
 
-/* ENTRAR AL CHAT */
-function entrarChat(){
-  document.getElementById("login").style.display="none";
-  document.getElementById("setup").style.display="none";
-  document.getElementById("chat").style.display="block";
-
-  usuario.innerText = userData.nick+" ("+userData.genero+")";
-  monedasEl.innerText = userData.monedas;
-
-  escucharChat();
+/* ENTRAR */
+function entrar(){
+  login.style.display="none";
+  setup.style.display="none";
+  chat.style.display="block";
+  usuario.innerText=userData.nick;
+  monedasEl.innerText=userData.monedas;
+  chatGeneral();
+  listarUsuarios();
 }
 
-/* ENVIAR MENSAJE */
-window.enviarMensaje = async()=>{
-  if(!texto.value) return;
+/* CHAT GENERAL */
+function chatGeneral(){
+  const q=query(collection(db,"chat"),orderBy("time"));
+  onSnapshot(q,s=>{
+    mensajes.innerHTML="";
+    s.forEach(d=>{
+      const m=d.data();
+      const div=document.createElement("div");
+      div.className="msg";
+      div.style.color=m.tipo==="regalo"?"#FFD700":
+        m.genero==="mujer"?"#ff4fd8":"#4fc3ff";
+      div.innerText=m.nick+": "+m.texto;
+      mensajes.appendChild(div);
+    });
+  });
+}
 
+window.enviarMensaje=async()=>{
+  if(!texto.value) return;
   await addDoc(collection(db,"chat"),{
     nick:userData.nick,
     genero:userData.genero,
@@ -159,66 +159,101 @@ window.enviarMensaje = async()=>{
   texto.value="";
 };
 
-/* ESCUCHAR CHAT */
-function escucharChat(){
-  const q = query(collection(db,"chat"),orderBy("time"));
-  onSnapshot(q,snap=>{
-    mensajes.innerHTML="";
-    snap.forEach(d=>{
-      const m=d.data();
+/* LISTA USUARIOS */
+function listarUsuarios(){
+  onSnapshot(collection(db,"usuarios"),s=>{
+    lista.innerHTML="";
+    s.forEach(d=>{
+      if(d.id===auth.currentUser.uid) return;
+      const u=d.data();
       const div=document.createElement("div");
-      div.className="msg";
-
-      if(m.tipo==="regalo") div.style.color="#FFD700";
-      else if(m.genero==="mujer") div.style.color="#ff4fd8";
-      else div.style.color="#4fc3ff";
-
-      div.innerText = m.nick+": "+m.texto;
-      mensajes.appendChild(div);
+      div.className="userItem";
+      div.innerText=u.nick+" ("+u.genero+")";
+      div.onclick=()=>abrirPrivado(u);
+      lista.appendChild(div);
     });
-    mensajes.scrollTop = mensajes.scrollHeight;
   });
 }
 
-/* REGALO */
-window.enviarRegalo = async(nombre,precio)=>{
-  if(userData.monedas < precio) return alert("No tienes monedas");
+/* CHAT PRIVADO */
+function abrirPrivado(u){
+  privadoCon=u;
+  chat.style.display="none";
+  privado.style.display="block";
+  privadoNick.innerText=u.nick;
+  escucharPrivado();
+}
+
+function escucharPrivado(){
+  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
+  const q=query(collection(db,"privados",id,"msgs"),orderBy("time"));
+  onSnapshot(q,s=>{
+    mensajesPriv.innerHTML="";
+    s.forEach(d=>{
+      const m=d.data();
+      const div=document.createElement("div");
+      div.innerText=m.nick+": "+m.texto;
+      mensajesPriv.appendChild(div);
+    });
+  });
+}
+
+window.enviarPrivado=async()=>{
+  if(userData.monedas<20) return alert("No tienes monedas");
+  const id=[auth.currentUser.uid,privadoCon.uid].sort().join("_");
 
   await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
-    monedas:increment(-precio)
+    monedas:increment(-20)
   });
 
-  await addDoc(collection(db,"chat"),{
+  await addDoc(collection(db,"privados",id,"msgs"),{
     nick:userData.nick,
-    texto:`🎁 ${nombre} (${precio})`,
-    tipo:"regalo",
+    texto:textoPriv.value,
     time:serverTimestamp()
   });
 
-  userData.monedas -= precio;
-  monedasEl.innerText = userData.monedas;
+  userData.monedas-=20;
+  monedasEl.innerText=userData.monedas;
+  textoPriv.value="";
 };
 
-/* SALIR */
-window.salir = async()=>{
-  await signOut(auth);
-  location.reload();
+window.volver=()=>{
+  privado.style.display="none";
+  chat.style.display="block";
 };
+
+/* REGALO */
+window.enviarRegalo=async(n,p)=>{
+  if(userData.monedas<p) return;
+  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{
+    monedas:increment(-p)
+  });
+  await addDoc(collection(db,"chat"),{
+    nick:userData.nick,
+    texto:`🎁 ${n} (${p})`,
+    tipo:"regalo",
+    time:serverTimestamp()
+  });
+  userData.monedas-=p;
+  monedasEl.innerText=userData.monedas;
+};
+
+window.salir=async()=>{await signOut(auth);location.reload();}
 </script>
 </head>
 
 <body>
 
 <div class="container" id="login">
-  <h2>🔥 CHAT 🔥</h2>
+  <h2>CHAT</h2>
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div class="container" id="setup" style="display:none">
-  <h2>Configura tu perfil</h2>
-  <input id="nickInput" placeholder="Tu nick">
+<div class="container" id="setup">
+  <h2>Perfil</h2>
+  <input id="nickInput" placeholder="Nick">
   <select id="generoSelect">
-    <option value="">Selecciona género</option>
+    <option value="">Género</option>
     <option value="hombre">Hombre</option>
     <option value="mujer">Mujer</option>
   </select>
@@ -227,20 +262,26 @@ window.salir = async()=>{
 
 <div class="container" id="chat">
   👤 <span id="usuario"></span><br>
-  💰 Monedas: <span id="monedasEl">0</span><br><br>
-
+  💰 <span id="monedasEl"></span> monedas
   <div id="mensajes"></div>
-
-  <input id="texto" placeholder="Mensaje">
+  <input id="texto" placeholder="Mensaje gratis">
   <button onclick="enviarMensaje()">Enviar</button>
 
-  <hr>
-  <button onclick="enviarRegalo('Rosa',50)">🌹 Rosa (50)</button>
-  <button onclick="enviarRegalo('Copa',100)">🍷 Copa (100)</button>
-  <button onclick="enviarRegalo('Diamante',300)">💎 Diamante (300)</button>
+  <button onclick="enviarRegalo('Rosa',50)">🌹 50</button>
 
-  <br><br>
+  <h3>Usuarios</h3>
+  <div id="lista"></div>
+
   <button onclick="salir()">Salir</button>
+</div>
+
+<div class="container" id="privado">
+  <h2>Chat privado con <span id="privadoNick"></span></h2>
+  <p>Costo: 20 monedas por mensaje</p>
+  <div id="mensajesPriv"></div>
+  <input id="textoPriv" placeholder="Mensaje privado">
+  <button onclick="enviarPrivado()">Enviar (20)</button>
+  <button onclick="volver()">Volver</button>
 </div>
 
 </body>
