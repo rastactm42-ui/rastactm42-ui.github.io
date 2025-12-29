@@ -52,6 +52,7 @@ header{
   height:75vh;
   object-fit:cover;
   border-radius:20px;
+  background:#111;
 }
 
 .actions{
@@ -78,7 +79,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* CONFIG FIREBASE */
+/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
@@ -88,57 +89,66 @@ const firebaseConfig = {
   appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let usuarios = [];
-let index = 0;
+/* FOTO POR DEFECTO (SI NO HAY FOTO) */
+const FOTO_DEFAULT = "https://i.imgur.com/8Km9tLL.png";
+
+let perfiles = [];
+let pos = 0;
 
 window.loginGoogle = () => {
   signInWithPopup(auth, provider);
 };
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
+onAuthStateChanged(auth, async user=>{
+  if(!user) return;
 
-  document.getElementById("login").style.display = "none";
-  document.getElementById("app").style.display = "flex";
+  document.getElementById("login").style.display="none";
+  document.getElementById("app").style.display="flex";
 
-  const ref = doc(db, "usuarios", user.uid);
+  const ref = doc(db,"usuarios",user.uid);
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      uid: user.uid,
-      nick: user.displayName || "Usuario",
-      foto: user.photoURL
+  if(!snap.exists()){
+    await setDoc(ref,{
+      uid:user.uid,
+      nick:user.displayName || "Usuario",
+      foto:user.photoURL || FOTO_DEFAULT
     });
   }
 
-  const all = await getDocs(collection(db, "usuarios"));
-  usuarios = [];
-  all.forEach(d => {
-    if (d.id !== user.uid) usuarios.push(d.data());
+  const all = await getDocs(collection(db,"usuarios"));
+  perfiles=[];
+  all.forEach(d=>{
+    if(d.id!==user.uid){
+      const u=d.data();
+      perfiles.push({
+        nick:u.nick,
+        foto:u.foto || FOTO_DEFAULT
+      });
+    }
   });
 
   mostrar();
 });
 
 function mostrar(){
-  if (!usuarios.length) return;
-  document.getElementById("foto").src = usuarios[index].foto;
-  document.getElementById("nombre").innerText = usuarios[index].nick;
+  if(!perfiles.length) return;
+  document.getElementById("foto").src = perfiles[pos].foto;
+  document.getElementById("nombre").innerText = perfiles[pos].nick;
 }
 
-window.like = () => {
-  index = (index + 1) % usuarios.length;
+window.like = ()=>{
+  pos = (pos+1) % perfiles.length;
   mostrar();
 };
 
-window.dislike = () => {
-  index = (index + 1) % usuarios.length;
+window.dislike = ()=>{
+  pos = (pos+1) % perfiles.length;
   mostrar();
 };
 </script>
