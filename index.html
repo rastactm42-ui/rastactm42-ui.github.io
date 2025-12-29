@@ -9,23 +9,6 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
 body{background:#000;color:#fff;height:100vh;overflow:hidden}
 
-#app{display:none;flex-direction:column;height:100vh}
-header{text-align:center;padding:14px;font-size:20px;border-bottom:1px solid #222}
-
-nav{
-  height:60px;
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-  border-top:1px solid #222;
-}
-nav button{
-  background:none;border:none;color:#888;font-size:14px
-}
-nav button.active{color:#ff0066;font-weight:bold}
-
-section{flex:1;display:none;justify-content:center;align-items:center}
-
 #login{
   height:100vh;
   display:flex;
@@ -43,40 +26,59 @@ section{flex:1;display:none;justify-content:center;align-items:center}
   color:#fff;
 }
 
+#app{display:none;flex-direction:column;height:100vh}
+
+header{text-align:center;padding:14px;font-size:20px;border-bottom:1px solid #222}
+
+section{flex:1;display:none;justify-content:center;align-items:center}
+
+nav{
+  height:60px;
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+  border-top:1px solid #222;
+}
+nav button{
+  background:none;border:none;color:#888;font-size:14px
+}
+nav button.active{color:#ff0066;font-weight:bold}
+
+/* CARD */
 .card{
   width:90%;
-  max-width:380px;
-  background:#111;
+  max-width:400px;
+  height:80vh;
   border-radius:20px;
-  padding:20px;
-  box-shadow:0 0 20px rgba(255,0,120,.4);
-  text-align:center;
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 0 25px rgba(255,0,120,.4);
 }
 .card img{
-  width:120px;
-  height:120px;
-  border-radius:50%;
+  width:100%;
+  height:100%;
   object-fit:cover;
-  margin-bottom:10px;
 }
-.card input{
+.info{
+  position:absolute;
+  bottom:0;
   width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#000;
-  border:1px solid #333;
-  color:#fff;
-  border-radius:8px;
+  padding:20px;
+  background:linear-gradient(transparent,rgba(0,0,0,.9));
 }
-.card button{
+.actions{
+  position:absolute;
+  bottom:-70px;
   width:100%;
-  padding:12px;
-  background:#ff0066;
-  border:none;
-  border-radius:8px;
-  color:#fff;
-  margin-top:10px;
+  display:flex;
+  justify-content:space-around;
 }
+.actions button{
+  width:65px;height:65px;border-radius:50%;
+  border:none;font-size:26px;color:#fff;
+}
+.nope{background:#333}
+.like{background:#ff0066}
 </style>
 
 <script type="module">
@@ -85,15 +87,18 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  onAuthStateChanged,
-  signOut,
-  updateProfile
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getFirestore,
   doc,
   setDoc,
-  getDoc
+  getDoc,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* FIREBASE */
@@ -111,6 +116,10 @@ const auth=getAuth(app);
 const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 
+let usuarios=[];
+let index=0;
+let actual=null;
+
 /* LOGIN */
 window.loginGoogle=async()=>{
   await signInWithPopup(auth,provider);
@@ -121,48 +130,71 @@ onAuthStateChanged(auth,async user=>{
   if(!user) return;
   document.getElementById("login").style.display="none";
   document.getElementById("app").style.display="flex";
-  abrir("perfil");
+  abrir("descubrir");
 
   const ref=doc(db,"usuarios",user.uid);
-  const snap=await getDoc(ref);
-
-  if(!snap.exists()){
+  if(!(await getDoc(ref)).exists()){
     await setDoc(ref,{
       uid:user.uid,
-      nick:user.displayName||"",
-      edad:"",
-      ciudad:"",
+      nick:user.displayName,
       foto:user.photoURL
     });
   }
 
-  cargarPerfil();
+  cargarUsuarios();
 });
 
-/* PERFIL */
-async function cargarPerfil(){
-  const user=auth.currentUser;
-  const ref=doc(db,"usuarios",user.uid);
-  const data=(await getDoc(ref)).data();
-
-  document.getElementById("foto").src=data.foto;
-  document.getElementById("nick").value=data.nick;
-  document.getElementById("edad").value=data.edad;
-  document.getElementById("ciudad").value=data.ciudad;
+/* CARGAR USUARIOS */
+async function cargarUsuarios(){
+  usuarios=[];
+  const snap=await getDocs(collection(db,"usuarios"));
+  snap.forEach(d=>{
+    if(d.id!==auth.currentUser.uid){
+      usuarios.push(d.data());
+    }
+  });
+  mostrar();
 }
 
-window.guardarPerfil=async()=>{
-  const user=auth.currentUser;
-  await setDoc(doc(db,"usuarios",user.uid),{
-    uid:user.uid,
-    nick:nick.value,
-    edad:edad.value,
-    ciudad:ciudad.value,
-    foto:user.photoURL
+function mostrar(){
+  if(usuarios.length===0) return;
+  actual=usuarios[index];
+  document.getElementById("foto").src=actual.foto;
+  document.getElementById("nombre").innerText=actual.nick;
+}
+
+/* LIKE / DISLIKE */
+window.like=async()=>{
+  await addDoc(collection(db,"likes"),{
+    from:auth.currentUser.uid,
+    to:actual.uid
   });
-  await updateProfile(user,{displayName:nick.value});
-  alert("Perfil guardado");
+
+  const q=query(
+    collection(db,"likes"),
+    where("from","==",actual.uid),
+    where("to","==",auth.currentUser.uid)
+  );
+  const snap=await getDocs(q);
+  if(!snap.empty){
+    alert("🔥 MATCH con "+actual.nick);
+    await addDoc(collection(db,"matches"),{
+      a:auth.currentUser.uid,
+      b:actual.uid
+    });
+  }
+  siguiente();
 };
+
+window.dislike=()=>{
+  siguiente();
+};
+
+function siguiente(){
+  index++;
+  if(index>=usuarios.length) index=0;
+  mostrar();
+}
 
 /* NAVEGACIÓN */
 window.abrir=(id)=>{
@@ -183,34 +215,29 @@ window.abrir=(id)=>{
 
 <div id="app">
 
-<header>CHAT</header>
+<header>DESCUBRIR</header>
 
 <section id="descubrir">
-  <h3>Descubrir (próximo paso)</h3>
-</section>
-
-<section id="chat">
-  <h3>Chat (próximo paso)</h3>
-</section>
-
-<section id="perfil">
   <div class="card">
     <img id="foto">
-    <input id="nick" placeholder="Nick">
-    <input id="edad" placeholder="Edad">
-    <input id="ciudad" placeholder="Ciudad">
-    <button onclick="guardarPerfil()">Guardar</button>
+    <div class="info">
+      <h2 id="nombre"></h2>
+    </div>
+    <div class="actions">
+      <button class="nope" onclick="dislike()">❌</button>
+      <button class="like" onclick="like()">❤️</button>
+    </div>
   </div>
 </section>
 
-<section id="config">
-  <button onclick="signOut()">Salir</button>
-</section>
+<section id="chat"><h3>Chat (PASO 4)</h3></section>
+<section id="perfil"><h3>Perfil (ya hecho)</h3></section>
+<section id="config"><h3>Config</h3></section>
 
 <nav>
-  <button id="btn-descubrir" onclick="abrir('descubrir')">Descubrir</button>
+  <button id="btn-descubrir" class="active" onclick="abrir('descubrir')">Descubrir</button>
   <button id="btn-chat" onclick="abrir('chat')">Chat</button>
-  <button id="btn-perfil" onclick="abrir('perfil')" class="active">Perfil</button>
+  <button id="btn-perfil" onclick="abrir('perfil')">Perfil</button>
   <button id="btn-config" onclick="abrir('config')">Config</button>
 </nav>
 
