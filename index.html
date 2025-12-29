@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App Citas</title>
+<title>App de Citas</title>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
@@ -17,16 +17,21 @@ body{background:#000;color:#fff;height:100vh}
   align-items:center;
   gap:20px;
 }
+
 #login button{
   padding:14px 30px;
   background:#ff0066;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   color:#fff;
   font-size:16px;
 }
 
-#app{display:none;height:100vh;flex-direction:column}
+#app{
+  display:none;
+  height:100vh;
+  flex-direction:column;
+}
 
 header{
   text-align:center;
@@ -40,9 +45,10 @@ header{
   justify-content:center;
   align-items:center;
 }
+
 .card img{
   width:90%;
-  max-width:400px;
+  max-width:420px;
   height:75vh;
   object-fit:cover;
   border-radius:20px;
@@ -53,6 +59,7 @@ header{
   justify-content:space-around;
   padding:14px;
 }
+
 .actions button{
   width:60px;
   height:60px;
@@ -61,6 +68,7 @@ header{
   font-size:24px;
   color:#fff;
 }
+
 .nope{background:#333}
 .like{background:#ff0066}
 </style>
@@ -70,65 +78,69 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* FIREBASE */
-const firebaseConfig={
-  apiKey:"AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
-  authDomain:"chat-1adf8.firebaseapp.com",
-  projectId:"chat-1adf8",
-  storageBucket:"chat-1adf8.appspot.com",
-  messagingSenderId:"466107819820",
-  appId:"1:466107819820:web:e297a7c513db3d96696e89"
+/* CONFIG FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
+  authDomain: "chat-1adf8.firebaseapp.com",
+  projectId: "chat-1adf8",
+  storageBucket: "chat-1adf8.appspot.com",
+  messagingSenderId: "466107819820",
+  appId: "1:466107819820:web:e297a7c513db3d96696e89"
 };
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-const provider=new GoogleAuthProvider();
 
-let usuarios=[], idx=0;
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const provider = new GoogleAuthProvider();
 
-/* LOGIN */
-window.loginGoogle=()=>signInWithPopup(auth,provider);
+let usuarios = [];
+let index = 0;
 
-/* SESIÓN */
-onAuthStateChanged(auth, async user=>{
-  if(!user) return;
+window.loginGoogle = () => {
+  signInWithPopup(auth, provider);
+};
 
-  login.style.display="none";
-  appDiv.style.display="flex";
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
 
-  const ref=doc(db,"usuarios",user.uid);
-  if(!(await getDoc(ref)).exists()){
-    await setDoc(ref,{
-      uid:user.uid,
-      nick:user.displayName || "Usuario",
-      foto:user.photoURL
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+
+  const ref = doc(db, "usuarios", user.uid);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      uid: user.uid,
+      nick: user.displayName || "Usuario",
+      foto: user.photoURL
     });
   }
 
-  const snap=await getDocs(collection(db,"usuarios"));
-  usuarios=[];
-  snap.forEach(d=>{
-    if(d.id!==user.uid) usuarios.push(d.data());
+  const all = await getDocs(collection(db, "usuarios"));
+  usuarios = [];
+  all.forEach(d => {
+    if (d.id !== user.uid) usuarios.push(d.data());
   });
 
   mostrar();
 });
 
-/* MOSTRAR */
 function mostrar(){
-  if(!usuarios.length) return;
-  foto.src=usuarios[idx].foto;
-  nombre.innerText=usuarios[idx].nick;
+  if (!usuarios.length) return;
+  document.getElementById("foto").src = usuarios[index].foto;
+  document.getElementById("nombre").innerText = usuarios[index].nick;
 }
 
-window.like=()=>{
-  idx=(idx+1)%usuarios.length;
+window.like = () => {
+  index = (index + 1) % usuarios.length;
   mostrar();
-}
-window.dislike=()=>{
-  idx=(idx+1)%usuarios.length;
+};
+
+window.dislike = () => {
+  index = (index + 1) % usuarios.length;
   mostrar();
-}
+};
 </script>
 </head>
 
@@ -139,7 +151,7 @@ window.dislike=()=>{
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div id="app" id="appDiv">
+<div id="app">
   <header>
     <h3 id="nombre"></h3>
   </header>
