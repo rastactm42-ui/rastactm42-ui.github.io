@@ -9,34 +9,25 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
 body{background:#000;color:#fff;height:100vh}
 
-#login{
+#login,#perfil,#app{
   height:100vh;
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
-  gap:20px;
+  gap:16px;
 }
 
-#login button{
-  padding:14px 30px;
+#app{display:none}
+#perfil{display:none}
+
+button{
+  padding:14px 28px;
   background:#ff0066;
   border:none;
   border-radius:10px;
   color:#fff;
   font-size:16px;
-}
-
-#app{
-  display:none;
-  height:100vh;
-  flex-direction:column;
-}
-
-header{
-  text-align:center;
-  padding:14px;
-  border-bottom:1px solid #222;
 }
 
 .card{
@@ -55,10 +46,10 @@ header{
   background:#111;
 }
 
-
 .actions{
   display:flex;
   justify-content:space-around;
+  width:100%;
   padding:14px;
 }
 
@@ -66,21 +57,20 @@ header{
   width:60px;
   height:60px;
   border-radius:50%;
-  border:none;
   font-size:24px;
-  color:#fff;
 }
 
-.nope{background:#333}
-.like{background:#ff0066}
+input[type=file]{
+  color:#fff;
+}
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
   authDomain: "chat-1adf8.firebaseapp.com",
@@ -93,65 +83,66 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
-/* FOTO POR DEFECTO (SI NO HAY FOTO) */
-const FOTO_DEFAULT = "https://i.imgur.com/8Km9tLL.png";
+let perfiles=[],pos=0;
 
-let perfiles = [];
-let pos = 0;
-
-window.loginGoogle = () => {
-  signInWithPopup(auth, provider);
-};
+window.loginGoogle=()=>signInWithPopup(auth,provider);
 
 onAuthStateChanged(auth, async user=>{
   if(!user) return;
 
+  const refUser=doc(db,"usuarios",user.uid);
+  const snap=await getDoc(refUser);
+
+  if(!snap.exists()){
+    document.getElementById("login").style.display="none";
+    document.getElementById("perfil").style.display="flex";
+    return;
+  }
+
+  cargarPerfiles(user.uid);
+});
+
+window.subirFoto=async()=>{
+  const file=document.getElementById("fotoInput").files[0];
+  if(!file) return alert("Selecciona una foto");
+
+  const user=auth.currentUser;
+  const storageRef=ref(storage,`fotos/${user.uid}.jpg`);
+  await uploadBytes(storageRef,file);
+  const url=await getDownloadURL(storageRef);
+
+  await setDoc(doc(db,"usuarios",user.uid),{
+    uid:user.uid,
+    nick:user.displayName||"Usuario",
+    foto:url
+  });
+
+  location.reload();
+};
+
+async function cargarPerfiles(uid){
   document.getElementById("login").style.display="none";
   document.getElementById("app").style.display="flex";
 
-  const ref = doc(db,"usuarios",user.uid);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    await setDoc(ref,{
-      uid:user.uid,
-      nick:user.displayName || "Usuario",
-      foto:user.photoURL || FOTO_DEFAULT
-    });
-  }
-
-  const all = await getDocs(collection(db,"usuarios"));
+  const all=await getDocs(collection(db,"usuarios"));
   perfiles=[];
   all.forEach(d=>{
-    if(d.id!==user.uid){
-      const u=d.data();
-      perfiles.push({
-        nick:u.nick,
-        foto:u.foto || FOTO_DEFAULT
-      });
-    }
+    if(d.id!==uid) perfiles.push(d.data());
   });
-
   mostrar();
-});
+}
 
 function mostrar(){
   if(!perfiles.length) return;
-  document.getElementById("foto").src = perfiles[pos].foto;
-  document.getElementById("nombre").innerText = perfiles[pos].nick;
+  document.getElementById("foto").src=perfiles[pos].foto;
+  document.getElementById("nombre").innerText=perfiles[pos].nick;
 }
 
-window.like = ()=>{
-  pos = (pos+1) % perfiles.length;
-  mostrar();
-};
-
-window.dislike = ()=>{
-  pos = (pos+1) % perfiles.length;
-  mostrar();
-};
+window.like=()=>{pos=(pos+1)%perfiles.length;mostrar();}
+window.dislike=()=>{pos=(pos+1)%perfiles.length;mostrar();}
 </script>
 </head>
 
@@ -162,18 +153,20 @@ window.dislike = ()=>{
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div id="app">
-  <header>
-    <h3 id="nombre"></h3>
-  </header>
+<div id="perfil">
+  <h3>Sube tu foto</h3>
+  <input type="file" id="fotoInput" accept="image/*">
+  <button onclick="subirFoto()">Continuar</button>
+</div>
 
+<div id="app">
+  <h3 id="nombre"></h3>
   <div class="card">
     <img id="foto">
   </div>
-
   <div class="actions">
-    <button class="nope" onclick="dislike()">❌</button>
-    <button class="like" onclick="like()">❤️</button>
+    <button onclick="dislike()">❌</button>
+    <button onclick="like()">❤️</button>
   </div>
 </div>
 
