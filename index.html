@@ -9,88 +9,51 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
 body{background:#000;color:#fff;height:100vh;overflow:hidden}
 
-#login{
-  height:100vh;display:flex;flex-direction:column;
-  justify-content:center;align-items:center;gap:15px
-}
-#login button{
-  padding:14px 25px;font-size:16px;border:none;
-  border-radius:8px;background:#ff0066;color:#fff
-}
+#login{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:15px}
+#login button{padding:14px 25px;font-size:16px;border:none;border-radius:8px;background:#ff0066;color:#fff}
 
 #app{display:none;flex-direction:column;height:100vh}
-
-header{text-align:center;padding:14px;font-size:20px;border-bottom:1px solid #222}
+header{text-align:center;padding:14px;font-size:18px;border-bottom:1px solid #222}
 
 section{flex:1;display:none}
 
-nav{
-  height:60px;display:flex;justify-content:space-around;
-  align-items:center;border-top:1px solid #222
-}
-nav button{
-  background:none;border:none;color:#888;font-size:14px
-}
+nav{height:60px;display:flex;justify-content:space-around;align-items:center;border-top:1px solid #222}
+nav button{background:none;border:none;color:#888;font-size:14px}
 nav button.active{color:#ff0066;font-weight:bold}
 
-/* DESCUBRIR */
-.card{
-  width:90%;max-width:400px;height:80vh;
-  margin:auto;border-radius:20px;overflow:hidden;
-  position:relative;box-shadow:0 0 25px rgba(255,0,120,.4)
-}
+/* CARD */
+.card{width:90%;max-width:400px;height:78vh;margin:auto;border-radius:20px;overflow:hidden;position:relative;box-shadow:0 0 25px rgba(255,0,120,.4)}
 .card img{width:100%;height:100%;object-fit:cover}
-.info{
-  position:absolute;bottom:0;width:100%;padding:20px;
-  background:linear-gradient(transparent,rgba(0,0,0,.9))
-}
-.actions{
-  position:absolute;bottom:-70px;width:100%;
-  display:flex;justify-content:space-around
-}
-.actions button{
-  width:65px;height:65px;border-radius:50%;
-  border:none;font-size:26px;color:#fff
-}
+.info{position:absolute;bottom:0;width:100%;padding:18px;background:linear-gradient(transparent,rgba(0,0,0,.9))}
+.actions{position:absolute;bottom:-70px;width:100%;display:flex;justify-content:space-around}
+.actions button{width:65px;height:65px;border-radius:50%;border:none;font-size:26px;color:#fff}
 .nope{background:#333}
 .like{background:#ff0066}
 
-/* MATCH LIST */
-.list{
-  padding:15px
-}
-.user{
-  display:flex;align-items:center;gap:10px;
-  padding:10px;border-bottom:1px solid #222;
-  cursor:pointer
-}
-.user img{
-  width:45px;height:45px;border-radius:50%;object-fit:cover
-}
-
 /* CHAT */
-#mensajes{
-  height:calc(100vh - 170px);
-  overflow-y:auto;padding:10px
-}
+#mensajes{height:calc(100vh - 170px);overflow-y:auto;padding:10px}
 .msg{margin:6px 0}
 .me{color:#ff0066}
 .other{color:#fff}
-#chatInput{
-  display:flex;border-top:1px solid #222
-}
-#chatInput input{
-  flex:1;padding:12px;background:#000;border:none;color:#fff
-}
-#chatInput button{
-  padding:12px 18px;background:#ff0066;border:none;color:#fff
-}
+#chatInput{display:flex;border-top:1px solid #222}
+#chatInput input{flex:1;padding:12px;background:#000;border:none;color:#fff}
+#chatInput button{padding:12px 18px;background:#ff0066;border:none;color:#fff}
+
+/* LIST */
+.list{padding:12px}
+.user{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #222;cursor:pointer}
+.user img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+
+/* BADGE */
+.badge{display:inline-block;padding:4px 8px;border-radius:12px;font-size:12px;margin-left:6px}
+.free{background:#333}
+.pro{background:#ff0066}
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, query, where, onSnapshot, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* FIREBASE */
 const firebaseConfig={
@@ -101,48 +64,82 @@ const firebaseConfig={
   messagingSenderId:"466107819820",
   appId:"1:466107819820:web:e297a7c513db3d96696e89"
 };
-
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 
-let usuarios=[],index=0,actual=null,chatCon=null;
+/* STATE */
+let usuarios=[], idx=0, actual=null, chatCon=null, me=null;
+
+/* HELPERS */
+const today=()=>new Date().toISOString().slice(0,10);
 
 /* LOGIN */
 window.loginGoogle=()=>signInWithPopup(auth,provider);
 
-/* SESIÓN */
-onAuthStateChanged(auth,async user=>{
+/* SESSION */
+onAuthStateChanged(auth, async user=>{
   if(!user) return;
   login.style.display="none";
-  appDiv.style.display="flex";
+  app.style.display="flex";
   abrir("descubrir");
 
   const ref=doc(db,"usuarios",user.uid);
-  if(!(await getDoc(ref)).exists()){
-    await setDoc(ref,{uid:user.uid,nick:user.displayName,foto:user.photoURL});
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref,{
+      uid:user.uid,
+      nick:user.displayName||"Usuario",
+      foto:user.photoURL,
+      plan:"free",        // free | pro
+      likesToday:0,
+      likesDate:today()
+    });
   }
-  cargarUsuarios();
-  cargarMatches();
+  me=(await getDoc(ref)).data();
+  header.innerHTML=`DESCUBRIR <span class="badge ${me.plan}">${me.plan.toUpperCase()}</span>`;
+  await cargarUsuarios();
+  await cargarMatches();
 });
 
-/* DESCUBRIR */
+/* DISCOVER */
 async function cargarUsuarios(){
   usuarios=[];
-  const snap=await getDocs(collection(db,"usuarios"));
-  snap.forEach(d=>{
-    if(d.id!==auth.currentUser.uid) usuarios.push(d.data());
-  });
+  const s=await getDocs(collection(db,"usuarios"));
+  s.forEach(d=>{ if(d.id!==auth.currentUser.uid) usuarios.push(d.data()); });
   mostrar();
 }
 function mostrar(){
   if(!usuarios.length) return;
-  actual=usuarios[index];
+  actual=usuarios[idx];
   foto.src=actual.foto;
   nombre.innerText=actual.nick;
 }
+
+/* LIKE LIMIT */
+async function canLike(){
+  const ref=doc(db,"usuarios",auth.currentUser.uid);
+  const snap=await getDoc(ref);
+  me=snap.data();
+
+  if(me.likesDate!==today()){
+    await updateDoc(ref,{likesToday:0,likesDate:today()});
+    me.likesToday=0; me.likesDate=today();
+  }
+  if(me.plan==="pro") return true;
+  if(me.likesToday>=10){
+    alert("Límite diario alcanzado. Pásate a PRO.");
+    return false;
+  }
+  await updateDoc(ref,{likesToday:me.likesToday+1});
+  me.likesToday++;
+  return true;
+}
+
+/* LIKE / MATCH */
 window.like=async()=>{
+  if(!(await canLike())) return;
   await addDoc(collection(db,"likes"),{from:auth.currentUser.uid,to:actual.uid});
   const q=query(collection(db,"likes"),
     where("from","==",actual.uid),
@@ -151,21 +148,19 @@ window.like=async()=>{
   if(!s.empty){
     await addDoc(collection(db,"matches"),{a:auth.currentUser.uid,b:actual.uid});
     alert("🔥 MATCH");
-    cargarMatches();
+    await cargarMatches();
   }
-  index=(index+1)%usuarios.length;mostrar();
+  idx=(idx+1)%usuarios.length; mostrar();
 };
-window.dislike=()=>{index=(index+1)%usuarios.length;mostrar();};
+window.dislike=()=>{ idx=(idx+1)%usuarios.length; mostrar(); };
 
-/* MATCHES */
+/* MATCH LIST */
 async function cargarMatches(){
   matches.innerHTML="";
   const uid=auth.currentUser.uid;
-  const q=query(collection(db,"matches"),
-    where("a","==",uid));
-  const q2=query(collection(db,"matches"),
-    where("b","==",uid));
-  const [s1,s2]=await Promise.all([getDocs(q),getDocs(q2)]);
+  const q1=query(collection(db,"matches"),where("a","==",uid));
+  const q2=query(collection(db,"matches"),where("b","==",uid));
+  const [s1,s2]=await Promise.all([getDocs(q1),getDocs(q2)]);
   const ids=[];
   s1.forEach(d=>ids.push(d.data().b));
   s2.forEach(d=>ids.push(d.data().a));
@@ -179,7 +174,7 @@ async function cargarMatches(){
   }
 }
 
-/* CHAT */
+/* CHAT (GRATIS) */
 function abrirChat(id,nick){
   chatCon=id;
   chatTitle.innerText=nick;
@@ -201,10 +196,15 @@ function abrirChat(id,nick){
 window.enviar=async()=>{
   if(!texto.value) return;
   const chatId=[auth.currentUser.uid,chatCon].sort().join("_");
-  await addDoc(collection(db,"chats",chatId,"msgs"),{
-    u:auth.currentUser.uid,txt:texto.value,t:Date.now()
-  });
+  await addDoc(collection(db,"chats",chatId,"msgs"),{u:auth.currentUser.uid,txt:texto.value,t:Date.now()});
   texto.value="";
+};
+
+/* UPGRADE (SIMULADO) */
+window.upgrade=async()=>{
+  await updateDoc(doc(db,"usuarios",auth.currentUser.uid),{plan:"pro"});
+  alert("Ahora eres PRO (simulado). En el siguiente paso conectamos pagos reales.");
+  location.reload();
 };
 
 /* NAV */
@@ -224,9 +224,8 @@ window.abrir=id=>{
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div id="app" id="appDiv">
-
-<header id="chatTitle">DESCUBRIR</header>
+<div id="app">
+<header id="header">DESCUBRIR</header>
 
 <section id="descubrir">
   <div class="card">
@@ -240,6 +239,7 @@ window.abrir=id=>{
 </section>
 
 <section id="chat">
+  <header id="chatTitle">Chat</header>
   <div id="mensajes"></div>
   <div id="chatInput">
     <input id="texto" placeholder="Mensaje">
@@ -247,8 +247,18 @@ window.abrir=id=>{
   </div>
 </section>
 
-<section id="perfil"><div class="list">Perfil (hecho antes)</div></section>
-<section id="config"><div class="list">Config</div></section>
+<section id="perfil">
+  <div class="list">
+    <p>Plan actual: <b id="planTxt"></b></p>
+    <button onclick="upgrade()" style="margin-top:10px;padding:10px;background:#ff0066;border:none;color:#fff;border-radius:8px">
+      Pasar a PRO
+    </button>
+  </div>
+</section>
+
+<section id="config">
+  <div class="list">Configuración</div>
+</section>
 
 <nav>
   <button id="btn-descubrir" class="active" onclick="abrir('descubrir')">Descubrir</button>
@@ -260,7 +270,6 @@ window.abrir=id=>{
 <section id="chatList">
   <div id="matches" class="list"></div>
 </section>
-
 </div>
 
 </body>
