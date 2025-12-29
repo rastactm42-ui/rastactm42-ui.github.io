@@ -10,96 +10,87 @@
 body{background:#000;color:#fff;height:100vh;overflow:hidden}
 
 #login{
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:15px;
+  height:100vh;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:15px
 }
 #login button{
-  padding:14px 25px;
-  font-size:16px;
-  border:none;
-  border-radius:8px;
-  background:#ff0066;
-  color:#fff;
+  padding:14px 25px;font-size:16px;border:none;
+  border-radius:8px;background:#ff0066;color:#fff
 }
 
 #app{display:none;flex-direction:column;height:100vh}
 
 header{text-align:center;padding:14px;font-size:20px;border-bottom:1px solid #222}
 
-section{flex:1;display:none;justify-content:center;align-items:center}
+section{flex:1;display:none}
 
 nav{
-  height:60px;
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-  border-top:1px solid #222;
+  height:60px;display:flex;justify-content:space-around;
+  align-items:center;border-top:1px solid #222
 }
 nav button{
   background:none;border:none;color:#888;font-size:14px
 }
 nav button.active{color:#ff0066;font-weight:bold}
 
-/* CARD */
+/* DESCUBRIR */
 .card{
-  width:90%;
-  max-width:400px;
-  height:80vh;
-  border-radius:20px;
-  overflow:hidden;
-  position:relative;
-  box-shadow:0 0 25px rgba(255,0,120,.4);
+  width:90%;max-width:400px;height:80vh;
+  margin:auto;border-radius:20px;overflow:hidden;
+  position:relative;box-shadow:0 0 25px rgba(255,0,120,.4)
 }
-.card img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
+.card img{width:100%;height:100%;object-fit:cover}
 .info{
-  position:absolute;
-  bottom:0;
-  width:100%;
-  padding:20px;
-  background:linear-gradient(transparent,rgba(0,0,0,.9));
+  position:absolute;bottom:0;width:100%;padding:20px;
+  background:linear-gradient(transparent,rgba(0,0,0,.9))
 }
 .actions{
-  position:absolute;
-  bottom:-70px;
-  width:100%;
-  display:flex;
-  justify-content:space-around;
+  position:absolute;bottom:-70px;width:100%;
+  display:flex;justify-content:space-around
 }
 .actions button{
   width:65px;height:65px;border-radius:50%;
-  border:none;font-size:26px;color:#fff;
+  border:none;font-size:26px;color:#fff
 }
 .nope{background:#333}
 .like{background:#ff0066}
+
+/* MATCH LIST */
+.list{
+  padding:15px
+}
+.user{
+  display:flex;align-items:center;gap:10px;
+  padding:10px;border-bottom:1px solid #222;
+  cursor:pointer
+}
+.user img{
+  width:45px;height:45px;border-radius:50%;object-fit:cover
+}
+
+/* CHAT */
+#mensajes{
+  height:calc(100vh - 170px);
+  overflow-y:auto;padding:10px
+}
+.msg{margin:6px 0}
+.me{color:#ff0066}
+.other{color:#fff}
+#chatInput{
+  display:flex;border-top:1px solid #222
+}
+#chatInput input{
+  flex:1;padding:12px;background:#000;border:none;color:#fff
+}
+#chatInput button{
+  padding:12px 18px;background:#ff0066;border:none;color:#fff
+}
 </style>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  where
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* FIREBASE */
 const firebaseConfig={
@@ -116,90 +107,110 @@ const auth=getAuth(app);
 const db=getFirestore(app);
 const provider=new GoogleAuthProvider();
 
-let usuarios=[];
-let index=0;
-let actual=null;
+let usuarios=[],index=0,actual=null,chatCon=null;
 
 /* LOGIN */
-window.loginGoogle=async()=>{
-  await signInWithPopup(auth,provider);
-};
+window.loginGoogle=()=>signInWithPopup(auth,provider);
 
 /* SESIÓN */
 onAuthStateChanged(auth,async user=>{
   if(!user) return;
-  document.getElementById("login").style.display="none";
-  document.getElementById("app").style.display="flex";
+  login.style.display="none";
+  appDiv.style.display="flex";
   abrir("descubrir");
 
   const ref=doc(db,"usuarios",user.uid);
   if(!(await getDoc(ref)).exists()){
-    await setDoc(ref,{
-      uid:user.uid,
-      nick:user.displayName,
-      foto:user.photoURL
-    });
+    await setDoc(ref,{uid:user.uid,nick:user.displayName,foto:user.photoURL});
   }
-
   cargarUsuarios();
+  cargarMatches();
 });
 
-/* CARGAR USUARIOS */
+/* DESCUBRIR */
 async function cargarUsuarios(){
   usuarios=[];
   const snap=await getDocs(collection(db,"usuarios"));
   snap.forEach(d=>{
-    if(d.id!==auth.currentUser.uid){
-      usuarios.push(d.data());
-    }
+    if(d.id!==auth.currentUser.uid) usuarios.push(d.data());
   });
   mostrar();
 }
-
 function mostrar(){
-  if(usuarios.length===0) return;
+  if(!usuarios.length) return;
   actual=usuarios[index];
-  document.getElementById("foto").src=actual.foto;
-  document.getElementById("nombre").innerText=actual.nick;
+  foto.src=actual.foto;
+  nombre.innerText=actual.nick;
 }
-
-/* LIKE / DISLIKE */
 window.like=async()=>{
-  await addDoc(collection(db,"likes"),{
-    from:auth.currentUser.uid,
-    to:actual.uid
-  });
-
-  const q=query(
-    collection(db,"likes"),
+  await addDoc(collection(db,"likes"),{from:auth.currentUser.uid,to:actual.uid});
+  const q=query(collection(db,"likes"),
     where("from","==",actual.uid),
-    where("to","==",auth.currentUser.uid)
-  );
-  const snap=await getDocs(q);
-  if(!snap.empty){
-    alert("🔥 MATCH con "+actual.nick);
-    await addDoc(collection(db,"matches"),{
-      a:auth.currentUser.uid,
-      b:actual.uid
-    });
+    where("to","==",auth.currentUser.uid));
+  const s=await getDocs(q);
+  if(!s.empty){
+    await addDoc(collection(db,"matches"),{a:auth.currentUser.uid,b:actual.uid});
+    alert("🔥 MATCH");
+    cargarMatches();
   }
-  siguiente();
+  index=(index+1)%usuarios.length;mostrar();
 };
+window.dislike=()=>{index=(index+1)%usuarios.length;mostrar();};
 
-window.dislike=()=>{
-  siguiente();
-};
-
-function siguiente(){
-  index++;
-  if(index>=usuarios.length) index=0;
-  mostrar();
+/* MATCHES */
+async function cargarMatches(){
+  matches.innerHTML="";
+  const uid=auth.currentUser.uid;
+  const q=query(collection(db,"matches"),
+    where("a","==",uid));
+  const q2=query(collection(db,"matches"),
+    where("b","==",uid));
+  const [s1,s2]=await Promise.all([getDocs(q),getDocs(q2)]);
+  const ids=[];
+  s1.forEach(d=>ids.push(d.data().b));
+  s2.forEach(d=>ids.push(d.data().a));
+  for(const id of ids){
+    const u=(await getDoc(doc(db,"usuarios",id))).data();
+    const div=document.createElement("div");
+    div.className="user";
+    div.innerHTML=`<img src="${u.foto}"><b>${u.nick}</b>`;
+    div.onclick=()=>abrirChat(id,u.nick);
+    matches.appendChild(div);
+  }
 }
 
-/* NAVEGACIÓN */
-window.abrir=(id)=>{
+/* CHAT */
+function abrirChat(id,nick){
+  chatCon=id;
+  chatTitle.innerText=nick;
+  abrir("chat");
+  mensajes.innerHTML="";
+  const chatId=[auth.currentUser.uid,id].sort().join("_");
+  onSnapshot(query(collection(db,"chats",chatId,"msgs"),orderBy("t")),snap=>{
+    mensajes.innerHTML="";
+    snap.forEach(d=>{
+      const m=d.data();
+      const div=document.createElement("div");
+      div.className="msg "+(m.u===auth.currentUser.uid?"me":"other");
+      div.innerText=m.txt;
+      mensajes.appendChild(div);
+    });
+    mensajes.scrollTop=mensajes.scrollHeight;
+  });
+}
+window.enviar=async()=>{
+  if(!texto.value) return;
+  const chatId=[auth.currentUser.uid,chatCon].sort().join("_");
+  await addDoc(collection(db,"chats",chatId,"msgs"),{
+    u:auth.currentUser.uid,txt:texto.value,t:Date.now()
+  });
+  texto.value="";
+};
+
+/* NAV */
+window.abrir=id=>{
   document.querySelectorAll("section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="flex";
+  document.getElementById(id).style.display="block";
   document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
   document.getElementById("btn-"+id).classList.add("active");
 };
@@ -213,16 +224,14 @@ window.abrir=(id)=>{
   <button onclick="loginGoogle()">Entrar con Google</button>
 </div>
 
-<div id="app">
+<div id="app" id="appDiv">
 
-<header>DESCUBRIR</header>
+<header id="chatTitle">DESCUBRIR</header>
 
 <section id="descubrir">
   <div class="card">
     <img id="foto">
-    <div class="info">
-      <h2 id="nombre"></h2>
-    </div>
+    <div class="info"><h2 id="nombre"></h2></div>
     <div class="actions">
       <button class="nope" onclick="dislike()">❌</button>
       <button class="like" onclick="like()">❤️</button>
@@ -230,9 +239,16 @@ window.abrir=(id)=>{
   </div>
 </section>
 
-<section id="chat"><h3>Chat (PASO 4)</h3></section>
-<section id="perfil"><h3>Perfil (ya hecho)</h3></section>
-<section id="config"><h3>Config</h3></section>
+<section id="chat">
+  <div id="mensajes"></div>
+  <div id="chatInput">
+    <input id="texto" placeholder="Mensaje">
+    <button onclick="enviar()">Enviar</button>
+  </div>
+</section>
+
+<section id="perfil"><div class="list">Perfil (hecho antes)</div></section>
+<section id="config"><div class="list">Config</div></section>
 
 <nav>
   <button id="btn-descubrir" class="active" onclick="abrir('descubrir')">Descubrir</button>
@@ -240,6 +256,10 @@ window.abrir=(id)=>{
   <button id="btn-perfil" onclick="abrir('perfil')">Perfil</button>
   <button id="btn-config" onclick="abrir('config')">Config</button>
 </nav>
+
+<section id="chatList">
+  <div id="matches" class="list"></div>
+</section>
 
 </div>
 
