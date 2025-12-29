@@ -2,100 +2,101 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CHAT</title>
+<title>Citas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
   font-family:Arial, sans-serif;
+}
+body{
   background:#000;
   color:#fff;
   height:100vh;
-  overflow:hidden;
 }
-#app{display:flex;flex-direction:column;height:100vh}
-main{flex:1}
-
-/* NAV */
-nav{
-  height:60px;
-  display:flex;
-  background:#111;
-  border-top:1px solid #333;
+.screen{
+  display:none;
+  height:100vh;
 }
-nav button{
-  flex:1;
-  background:none;
-  border:none;
-  color:#aaa;
-  font-size:12px;
-}
-nav button.active{color:#ff3366}
-
-/* SECCIONES */
-section{display:none;height:100%}
-section.active{display:flex;flex-direction:column}
-
-/* DESCUBRIR */
-#card{
-  flex:1;
+.screen.active{
   display:flex;
   flex-direction:column;
-  justify-content:flex-end;
+  justify-content:center;
+  align-items:center;
 }
-#card img{
-  width:100%;
-  height:90vh;
-  object-fit:cover;
+#app{
+  justify-content:space-between;
 }
-.info{
-  position:absolute;
-  bottom:60px;
-  width:100%;
-  padding:20px;
-  background:linear-gradient(transparent,rgba(0,0,0,.9));
-}
-.actions{
-  display:flex;
-}
-.actions button{
+main{
   flex:1;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+nav{
+  display:flex;
+  justify-content:space-around;
+  background:#111;
+  padding:12px 0;
+}
+nav button{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:14px;
+}
+button{
   padding:15px;
   border:none;
-  font-size:18px;
-}
-.no{background:#333;color:#fff}
-.yes{background:#ff3366;color:#fff}
-
-/* CHAT */
-#chatBox{
-  flex:1;
-  overflow:auto;
-  padding:10px;
-}
-.msg{
-  background:#222;
-  padding:8px;
-  border-radius:8px;
-  margin-bottom:6px;
-}
-textarea{
-  width:100%;
-  padding:10px;
-  border:none;
-  background:#111;
-  color:#fff;
-}
-button.send{
-  width:100%;
-  padding:12px;
+  border-radius:10px;
   background:#ff3366;
-  border:none;
   color:#fff;
+  font-size:16px;
+}
+img{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
 }
 </style>
 
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="login" class="screen active">
+  <h1>CITAS</h1>
+  <br>
+  <button id="btnGoogle">Entrar con Google</button>
+</section>
+
+<!-- APP -->
+<section id="app" class="screen">
+
+  <main id="content">
+    <div id="home">
+      <h2>Bienvenido</h2>
+      <br>
+      <img id="userPhoto">
+      <p id="userName"></p>
+    </div>
+  </main>
+
+  <nav>
+    <button onclick="changeTab('Inicio')">Inicio</button>
+    <button onclick="changeTab('Descubrir')">Descubrir</button>
+    <button onclick="changeTab('Chat')">Chat</button>
+    <button onclick="changeTab('Perfil')">Perfil</button>
+  </nav>
+
+</section>
+
+<!-- FIREBASE + APP -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
@@ -104,16 +105,6 @@ import {
   signInWithPopup,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBszwdqJLY0GiPNlxh37_wNpSsIm0y9N0c",
@@ -126,146 +117,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let yo, datos, lista=[], index=0;
+const login = document.getElementById("login");
+const appScreen = document.getElementById("app");
+const userPhoto = document.getElementById("userPhoto");
+const userName = document.getElementById("userName");
 
-/* LOGIN */
-window.login = ()=>signInWithPopup(auth,provider);
+document.getElementById("btnGoogle").onclick = async ()=>{
+  await signInWithPopup(auth, provider);
+};
 
-/* SESIÓN */
-onAuthStateChanged(auth, async user=>{
-  if(!user) return;
-  yo=user;
-
-  const ref=doc(db,"users",user.uid);
-  const snap=await getDoc(ref);
-
-  if(!snap.exists()){
-    await setDoc(ref,{
-      nombre:user.displayName,
-      foto:user.photoURL,
-      genero:"hombre",
-      mensajes:0
-    });
+onAuthStateChanged(auth, user=>{
+  if(user){
+    login.classList.remove("active");
+    appScreen.classList.add("active");
+    userPhoto.src = user.photoURL;
+    userName.innerText = user.displayName;
   }
-
-  datos=(await getDoc(ref)).data();
-  document.getElementById("login").style.display="none";
-  document.getElementById("app").style.display="flex";
-  mostrar("descubrir");
-  cargarUsuarios();
-  escucharChat();
 });
 
-/* DESCUBRIR */
-function cargarUsuarios(){
-  onSnapshot(collection(db,"users"),snap=>{
-    lista=[];
-    snap.forEach(d=>{
-      if(d.id!==yo.uid) lista.push(d.data());
-    });
-    mostrarUsuario();
-  });
-}
-
-function mostrarUsuario(){
-  if(lista.length===0) return;
-  const u=lista[index%lista.length];
-  card.innerHTML=`
-    <img src="${u.foto}">
-    <div class="info"><h2>${u.nombre}</h2></div>
-  `;
-}
-
-window.next=()=>{
-  index++;
-  mostrarUsuario();
-};
-
-window.match=()=>{
-  alert("❤️ MATCH con "+lista[index%lista.length].nombre);
-  index++;
-  mostrarUsuario();
-};
-
-/* CHAT GENERAL */
-window.enviar = async()=>{
-  if(datos.genero==="hombre" && datos.mensajes>=30){
-    alert("Límite de 30 mensajes alcanzado");
-    return;
-  }
-  if(!mensaje.value) return;
-
-  await addDoc(collection(db,"chat"),{
-    nombre:datos.nombre,
-    texto:mensaje.value,
-    fecha:Date.now()
-  });
-
-  if(datos.genero==="hombre"){
-    datos.mensajes++;
-    await updateDoc(doc(db,"users",yo.uid),{
-      mensajes:datos.mensajes
-    });
-  }
-  mensaje.value="";
-};
-
-function escucharChat(){
-  onSnapshot(collection(db,"chat"),snap=>{
-    chatBox.innerHTML="";
-    snap.forEach(d=>{
-      const m=d.data();
-      chatBox.innerHTML+=`<div class="msg"><b>${m.nombre}:</b> ${m.texto}</div>`;
-    });
-  });
-}
-
-/* NAV */
-window.mostrar=id=>{
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
-  document.getElementById("b_"+id).classList.add("active");
+window.changeTab = (name)=>{
+  document.getElementById("content").innerHTML =
+    `<h2>${name}</h2>`;
 };
 </script>
-</head>
-
-<body>
-
-<div id="login" style="height:100vh;display:flex;align-items:center;justify-content:center">
-  <button onclick="login()" class="send">Entrar con Google</button>
-</div>
-
-<div id="app" style="display:none">
-
-<main>
-<section id="descubrir" class="active">
-  <div id="card"></div>
-  <div class="actions">
-    <button class="no" onclick="next()">❌</button>
-    <button class="yes" onclick="match()">❤️</button>
-  </div>
-</section>
-
-<section id="chat">
-  <div id="chatBox"></div>
-  <textarea id="mensaje" placeholder="Mensaje"></textarea>
-  <button class="send" onclick="enviar()">Enviar</button>
-</section>
-
-<section id="perfil"></section>
-</main>
-
-<nav>
-  <button id="b_descubrir" class="active" onclick="mostrar('descubrir')">🔥</button>
-  <button id="b_chat" onclick="mostrar('chat')">💬</button>
-  <button id="b_perfil" onclick="mostrar('perfil')">👤</button>
-</nav>
-
-</div>
 
 </body>
 </html>
